@@ -1,22 +1,20 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Copy, Download, Home, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft, Home, Printer } from "lucide-react";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
   
   const orderId = searchParams.get("orderId");
   const waecType = searchParams.get("waecType");
   const quantity = parseInt(searchParams.get("quantity") || "1");
+  const phoneNumber = searchParams.get("phone") || "";
   
   const [checkers, setCheckers] = useState([]);
-  const [showPins, setShowPins] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [purchaseDate, setPurchaseDate] = useState("");
 
   const examTypeNames = {
     bece: "BECE",
@@ -31,10 +29,23 @@ const Success = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
       
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }) + ' @ ' + now.toLocaleTimeString('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      setPurchaseDate(formattedDate);
+      
       const generatedCheckers = Array.from({ length: quantity }, (_, index) => ({
         id: index + 1,
-        serial: `${waecType?.toUpperCase()}${Date.now()}${String(index + 1).padStart(3, '0')}`,
-        pin: Math.random().toString(36).substring(2, 10).toUpperCase()
+        serial: `WGC${Date.now()}${String(index + 1).padStart(2, '0')}`,
+        pin: Math.floor(Math.random() * 90000000000) + 10000000000
       }));
       
       setCheckers(generatedCheckers);
@@ -46,175 +57,118 @@ const Success = () => {
     }
   }, [orderId, waecType, quantity]);
 
-  const copyToClipboard = (text, type) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${type} copied to clipboard`,
-    });
-  };
-
-  const copyAllCheckers = () => {
-    const allCheckers = checkers.map(checker => 
-      `Serial: ${checker.serial}, PIN: ${checker.pin}`
-    ).join('\n');
-    
-    navigator.clipboard.writeText(allCheckers);
-    toast({
-      title: "All checkers copied!",
-      description: "All serial numbers and PINs copied to clipboard",
-    });
+  const handlePrint = () => {
+    window.print();
   };
 
   if (!orderId || !waecType) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="text-center py-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Order</h2>
-            <p className="text-gray-600 mb-4">No order information found.</p>
-            <Link to="/">
-              <Button>Back to Home</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <div className="max-w-md mx-auto text-center p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Order</h2>
+          <p className="text-gray-600 mb-4">No order information found.</p>
+          <Link to="/">
+            <Button>Back to Home</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="text-center">
-            <h1 className="text-xl font-bold text-gray-900">Purchase Successful</h1>
-            <p className="text-sm text-gray-600">Order ID: {orderId}</p>
-          </div>
-        </div>
-      </header>
+    <>
+      {/* Print styles */}
+      <style jsx>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          .print-page {
+            margin: 0;
+            padding: 20px;
+            background: white;
+          }
+          .checker-card {
+            border: 2px solid #000;
+            margin: 20px 0;
+            padding: 20px;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Success Message */}
-          <div className="text-center mb-8">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-            <p className="text-gray-600">
-              Your {examTypeNames[waecType]} result checkers are ready
-            </p>
-          </div>
-
-          {/* Checkers Display */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-xl">
-                  Your {examTypeNames[waecType]} Result Checkers ({quantity})
-                </CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowPins(!showPins)}
-                  >
-                    {showPins ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                    {showPins ? "Hide" : "Show"} PINs
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 print:bg-white">
+        {/* Header - Hidden in print */}
+        <header className="bg-white shadow-sm border-b no-print">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Link to="/" className="mr-4">
+                  <Button variant="ghost" size="sm">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Return Home
                   </Button>
-                  {!isLoading && checkers.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={copyAllCheckers}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy All
-                    </Button>
-                  )}
-                </div>
+                </Link>
+                <h1 className="text-xl font-bold text-gray-900">Purchase Successful</h1>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Generating your checkers...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {checkers.map((checker) => (
-                    <div key={checker.id} className="bg-gray-50 p-4 rounded-lg border">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <Label className="text-sm font-medium text-gray-600">Serial Number</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <code className="bg-white px-3 py-2 rounded border font-mono text-sm flex-1">
-                              {checker.serial}
-                            </code>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyToClipboard(checker.serial, "Serial number")}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm font-medium text-gray-600">PIN</Label>
-                          <div className="flex items-center gap-2 mt-1">
-                            <code className="bg-white px-3 py-2 rounded border font-mono text-sm flex-1">
-                              {showPins ? checker.pin : "••••••••"}
-                            </code>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyToClipboard(checker.pin, "PIN")}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+              <Button onClick={handlePrint} className="bg-gray-800 hover:bg-gray-900">
+                <Printer className="h-4 w-4 mr-2" />
+                PRINT
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-8 print:px-0 print:py-0">
+          <div className="max-w-2xl mx-auto print:max-w-none">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Generating your checkers...</p>
+              </div>
+            ) : (
+              <div className="print-page">
+                {checkers.map((checker) => (
+                  <div key={checker.id} className="checker-card bg-white border-2 border-gray-800 p-6 mb-6 text-center">
+                    <h2 className="text-xl font-bold mb-4">
+                      {examTypeNames[waecType]} RESULT CHECKER
+                    </h2>
+                    
+                    {/* Dotted line */}
+                    <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
+                    
+                    <div className="space-y-2 mb-4">
+                      <p className="text-lg">
+                        <span className="font-semibold">Serial:</span> {checker.serial}
+                      </p>
+                      <p className="text-lg">
+                        <span className="font-semibold">PIN:</span> {checker.pin}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    
+                    {/* Dotted line */}
+                    <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
+                    
+                    <div className="space-y-1 text-sm">
+                      <p>
+                        <span className="font-semibold">Purchased by:</span> {phoneNumber}
+                      </p>
+                      <p>
+                        <span className="font-semibold">Date:</span> {purchaseDate}
+                      </p>
+                      <p>
+                        <span className="font-semibold">Check result at:</span> https://ghana.waecdirect.org
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-          {/* Important Notes */}
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Important Notes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 text-gray-600">
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
-                  Keep your Serial Numbers and PINs safe - you'll need them to check results
-                </li>
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
-                  Your checkers have been sent to your phone number via SMS
-                </li>
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
-                  You can retrieve these checkers anytime using your phone number
-                </li>
-                <li className="flex items-start">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
-                  Visit the official WAEC website to check your results when they're released
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center">
+          {/* Action Buttons - Hidden in print */}
+          <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center no-print">
             <Link to="/">
               <Button variant="outline" className="w-full sm:w-auto">
                 <Home className="h-4 w-4 mr-2" />
@@ -227,16 +181,10 @@ const Success = () => {
               </Button>
             </Link>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </>
   );
 };
-
-const Label = ({ children, className = "" }) => (
-  <label className={`block text-sm font-medium text-gray-700 ${className}`}>
-    {children}
-  </label>
-);
 
 export default Success;

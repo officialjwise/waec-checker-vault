@@ -12,7 +12,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-center">
             <GraduationCap className="h-8 w-8 text-blue-600 mr-3" />
-            <h1 className="text-2xl font-bold text-gray-900">WAEC Result Checker</h1>
+            <h1 className="text-2xl font-bold text-gray-900">YoungPress</h1>
           </div>
         </div>
       </header>
@@ -62,7 +62,6 @@ const Index = () => {
                   </ul>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600 mb-4">¢17.5 per checker</p>
                   <Link to="/buy">
                     <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold">
                       Buy Now
