@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, AlertCircle, Loader2, GraduationCap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,22 +16,34 @@ const BuyType = () => {
   const [quantity, setQuantity] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
+  const [country, setCountry] = useState("ghana");
   const [isLoading, setIsLoading] = useState(false);
   
-  const unitPrice = 17.5;
-  const total = quantity * unitPrice;
+  const countries = {
+    ghana: { name: "Ghana", code: "+233", flag: "🇬🇭" },
+    nigeria: { name: "Nigeria", code: "+234", flag: "🇳🇬" }
+  };
 
   const examTypeNames = {
     bece: "BECE",
     wassce: "WASSCE", 
-    novdec: "NOVDEC"
+    novdec: "NOVDEC",
+    placement: "Placement Checker"
   };
 
   const examTypeFullNames = {
     bece: "Basic Education Certificate Examination",
     wassce: "West African Senior School Certificate Examination",
-    novdec: "November/December WASSCE"
+    novdec: "November/December WASSCE",
+    placement: "School Placement Checker"
   };
+
+  const getUnitPrice = () => {
+    return waecType === "placement" ? 20 : 17.5;
+  };
+
+  const unitPrice = getUnitPrice();
+  const total = quantity * unitPrice;
 
   const handlePhoneNumberChange = (e) => {
     let value = e.target.value;
@@ -42,15 +54,28 @@ const BuyType = () => {
 
   const getFullPhoneNumber = () => {
     if (!phoneNumber.trim()) return "";
-    // Remove any spaces or dashes and ensure it starts with +233
+    const selectedCountry = countries[country];
     const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
-    if (cleanNumber.startsWith('233')) {
-      return `+${cleanNumber}`;
-    } else if (cleanNumber.startsWith('0')) {
-      return `+233${cleanNumber.substring(1)}`;
-    } else {
-      return `+233${cleanNumber}`;
+    
+    if (country === "ghana") {
+      if (cleanNumber.startsWith('233')) {
+        return `+${cleanNumber}`;
+      } else if (cleanNumber.startsWith('0')) {
+        return `+233${cleanNumber.substring(1)}`;
+      } else {
+        return `+233${cleanNumber}`;
+      }
+    } else if (country === "nigeria") {
+      if (cleanNumber.startsWith('234')) {
+        return `+${cleanNumber}`;
+      } else if (cleanNumber.startsWith('0')) {
+        return `+234${cleanNumber.substring(1)}`;
+      } else {
+        return `+234${cleanNumber}`;
+      }
     }
+    
+    return `${selectedCountry.code}${cleanNumber}`;
   };
 
   const handleSubmit = async (e) => {
@@ -111,7 +136,7 @@ const BuyType = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Link to="/buy" className="mr-4">
+              <Link to={waecType === "placement" ? "/" : "/buy"} className="mr-4">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
@@ -119,7 +144,7 @@ const BuyType = () => {
               </Link>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  Buy {examTypeNames[waecType]} Result Checker
+                  Buy {examTypeNames[waecType]} {waecType !== "placement" && "Result Checker"}
                 </h1>
                 <p className="text-sm text-gray-600">{examTypeFullNames[waecType]}</p>
               </div>
@@ -142,43 +167,61 @@ const BuyType = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Quantity */}
-                <div>
-                  <Label htmlFor="quantity">Quantity *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={quantity}
-                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                    className="mt-1"
-                    required
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    How many checkers do you need?
-                  </p>
-                </div>
+                {waecType !== "placement" && (
+                  <div>
+                    <Label htmlFor="quantity">Quantity *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                      className="mt-1"
+                      required
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      How many checkers do you need?
+                    </p>
+                  </div>
+                )}
 
-                {/* Phone Number with Ghana Flag */}
+                {/* Phone Number with Country Dropdown */}
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <div className="mt-1 relative">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                      <span className="text-2xl mr-2">🇬🇭</span>
-                      <span className="text-gray-500 text-sm">+233</span>
-                    </div>
+                  <div className="mt-1 flex gap-2">
+                    <Select value={country} onValueChange={setCountry}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue>
+                          <div className="flex items-center">
+                            <span className="mr-2">{countries[country].flag}</span>
+                            <span className="text-sm">{countries[country].code}</span>
+                          </div>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(countries).map(([key, countryData]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex items-center">
+                              <span className="mr-2">{countryData.flag}</span>
+                              <span>{countryData.name} ({countryData.code})</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="123 456 789"
                       value={phoneNumber}
                       onChange={handlePhoneNumberChange}
-                      className="pl-20"
+                      className="flex-1"
                       required
                     />
                   </div>
                   <p className="text-sm text-gray-500 mt-1">
-                    We'll send your checkers to this number via SMS
+                    We'll send your {waecType === "placement" ? "placement results" : "checkers"} to this number via SMS
                   </p>
                   {phoneNumber && (
                     <p className="text-xs text-blue-600 mt-1">
@@ -199,7 +242,7 @@ const BuyType = () => {
                     className="mt-1"
                   />
                   <p className="text-sm text-gray-500 mt-1">
-                    Email backup of your checkers (recommended)
+                    Email backup of your {waecType === "placement" ? "placement results" : "checkers"} (recommended)
                   </p>
                 </div>
 
@@ -209,10 +252,12 @@ const BuyType = () => {
                     <span>Unit Price:</span>
                     <span className="font-semibold">¢{unitPrice.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span>Quantity:</span>
-                    <span className="font-semibold">{quantity}</span>
-                  </div>
+                  {waecType !== "placement" && (
+                    <div className="flex justify-between items-center mb-2">
+                      <span>Quantity:</span>
+                      <span className="font-semibold">{quantity}</span>
+                    </div>
+                  )}
                   <hr className="my-2" />
                   <div className="flex justify-between items-center text-lg font-bold text-green-600">
                     <span>Total:</span>

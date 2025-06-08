@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -19,13 +18,15 @@ const Success = () => {
   const examTypeNames = {
     bece: "BECE",
     wassce: "WASSCE", 
-    novdec: "NOVDEC"
+    novdec: "NOVDEC",
+    placement: "Placement Checker"
   };
 
   const resultCheckingUrls = {
     bece: "https://eresults.waecgh.org",
     wassce: "https://ghana.waecdirect.org",
-    novdec: "https://ghana.waecdirect.org"
+    novdec: "https://ghana.waecdirect.org",
+    placement: "https://cssps.gov.gh"
   };
 
   // Generate mock checkers
@@ -48,17 +49,26 @@ const Success = () => {
       
       setPurchaseDate(formattedDate);
       
-      const generatedCheckers = Array.from({ length: quantity }, (_, index) => ({
-        id: index + 1,
-        serial: `WGC${Date.now()}${String(index + 1).padStart(2, '0')}`,
-        pin: Math.floor(Math.random() * 90000000000) + 10000000000
-      }));
+      if (waecType === "placement") {
+        const placementChecker = {
+          id: 1,
+          serial: `PLC${Date.now()}`,
+          pin: Math.floor(Math.random() * 90000000000) + 10000000000
+        };
+        setCheckers([placementChecker]);
+      } else {
+        const generatedCheckers = Array.from({ length: quantity }, (_, index) => ({
+          id: index + 1,
+          serial: `WGC${Date.now()}${String(index + 1).padStart(2, '0')}`,
+          pin: Math.floor(Math.random() * 90000000000) + 10000000000
+        }));
+        setCheckers(generatedCheckers);
+      }
       
-      setCheckers(generatedCheckers);
       setIsLoading(false);
     };
 
-    if (orderId && waecType && quantity) {
+    if (orderId && waecType) {
       generateCheckers();
     }
   }, [orderId, waecType, quantity]);
@@ -133,14 +143,14 @@ const Success = () => {
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Generating your checkers...</p>
+                <p className="text-gray-600">Generating your {waecType === "placement" ? "placement checker" : "checkers"}...</p>
               </div>
             ) : (
               <div className="print-page">
                 {checkers.map((checker) => (
                   <div key={checker.id} className="checker-card bg-white border-2 border-gray-800 p-6 mb-6 text-center">
                     <h2 className="text-xl font-bold mb-4">
-                      {examTypeNames[waecType]} RESULT CHECKER
+                      {examTypeNames[waecType]} {waecType === "placement" ? "" : "RESULT CHECKER"}
                     </h2>
                     
                     {/* Dotted line */}
@@ -165,7 +175,7 @@ const Success = () => {
                         rel="noopener noreferrer"
                         className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
                       >
-                        Check Your Results
+                        {waecType === "placement" ? "Check Your Placement" : "Check Your Results"}
                         <ExternalLink className="h-4 w-4 ml-2" />
                       </a>
                       
@@ -177,7 +187,7 @@ const Success = () => {
                           <span className="font-semibold">Date:</span> {purchaseDate}
                         </p>
                         <p className="text-xs text-gray-600">
-                          Use your serial and PIN on the website above to check your results
+                          Use your serial and PIN on the website above to {waecType === "placement" ? "check your placement" : "check your results"}
                         </p>
                       </div>
                     </div>
@@ -195,9 +205,9 @@ const Success = () => {
                 Back to Home
               </Button>
             </Link>
-            <Link to="/buy">
+            <Link to={waecType === "placement" ? "/" : "/buy"}>
               <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-                Buy More Checkers
+                {waecType === "placement" ? "Buy More Services" : "Buy More Checkers"}
               </Button>
             </Link>
           </div>

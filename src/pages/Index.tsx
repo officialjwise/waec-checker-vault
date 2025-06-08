@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Search, GraduationCap } from "lucide-react";
+import { ShoppingCart, Search, GraduationCap, MapPin } from "lucide-react";
 
 const Index = () => {
   return (
@@ -21,14 +21,14 @@ const Index = () => {
       <main className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Access Your WAEC Results
+            Access Your WAEC Results & Check School Placements
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Buy new result checkers or retrieve your previously purchased ones for BECE, WASSCE, and NOVDEC examinations.
+            Buy new result checkers, retrieve your previously purchased ones, or check your school placement status.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* Buy Checker Card */}
           <Card className="hover:shadow-lg transition-shadow duration-300 border-2 hover:border-blue-200">
             <CardHeader className="text-center pb-4">
@@ -65,6 +65,50 @@ const Index = () => {
                   <Link to="/buy">
                     <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg font-semibold">
                       Buy Now
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Placement Checker Card */}
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-2 hover:border-purple-200">
+            <CardHeader className="text-center pb-4">
+              <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                <MapPin className="h-8 w-8 text-purple-600" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-gray-900">
+                School Placement Checker
+              </CardTitle>
+              <CardDescription className="text-base text-gray-600">
+                Check your SHS placement status after BECE results
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">Check placement for:</p>
+                  <ul className="text-sm space-y-1">
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                      Senior High School (SHS) placement
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                      TVET placement
+                    </li>
+                    <li className="flex items-center">
+                      <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                      School selection verification
+                    </li>
+                  </ul>
+                </div>
+                <div className="text-center">
+                  <p className="text-lg font-semibold text-purple-600 mb-2">¢20.00</p>
+                  <Link to="/buy/placement">
+                    <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 text-lg font-semibold">
+                      Check Placement
                     </Button>
                   </Link>
                 </div>
