@@ -78,24 +78,26 @@ const Success = () => {
   return (
     <>
       {/* Print styles */}
-      <style jsx>{`
-        @media print {
-          .no-print {
-            display: none !important;
+      <style>
+        {`
+          @media print {
+            .no-print {
+              display: none !important;
+            }
+            .print-page {
+              margin: 0;
+              padding: 20px;
+              background: white;
+            }
+            .checker-card {
+              border: 2px solid #000;
+              margin: 20px 0;
+              padding: 20px;
+              page-break-inside: avoid;
+            }
           }
-          .print-page {
-            margin: 0;
-            padding: 20px;
-            background: white;
-          }
-          .checker-card {
-            border: 2px solid #000;
-            margin: 20px 0;
-            padding: 20px;
-            page-break-inside: avoid;
-          }
-        }
-      `}</style>
+        `}
+      </style>
 
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 print:bg-white">
         {/* Header - Hidden in print */}
