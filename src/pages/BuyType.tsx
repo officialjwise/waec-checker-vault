@@ -52,6 +52,16 @@ const BuyType = () => {
     setPhoneNumber(value);
   };
 
+  const handleQuantityChange = (e) => {
+    const value = parseInt(e.target.value) || 0;
+    // Prevent zero or negative quantities
+    if (value < 1) {
+      setQuantity(1);
+    } else {
+      setQuantity(value);
+    }
+  };
+
   const getFullPhoneNumber = () => {
     if (!phoneNumber.trim()) return "";
     const selectedCountry = countries[country];
@@ -174,9 +184,8 @@ const BuyType = () => {
                       id="quantity"
                       type="number"
                       min="1"
-                      max="10"
                       value={quantity}
-                      onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                      onChange={handleQuantityChange}
                       className="mt-1"
                       required
                     />

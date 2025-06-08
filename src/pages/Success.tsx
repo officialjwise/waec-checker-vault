@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Home, Printer, ExternalLink } from "lucide-react";
+import { ArrowLeft, Home, Printer, ExternalLink, Grid3x3, Rows2 } from "lucide-react";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
@@ -14,6 +14,7 @@ const Success = () => {
   const [checkers, setCheckers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
 
   const examTypeNames = {
     bece: "BECE",
@@ -77,6 +78,10 @@ const Success = () => {
     window.print();
   };
 
+  const toggleViewMode = () => {
+    setViewMode(viewMode === "grid" ? "list" : "grid");
+  };
+
   if (!orderId || !waecType) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -129,17 +134,37 @@ const Success = () => {
                 </Link>
                 <h1 className="text-xl font-bold text-gray-900">Purchase Successful</h1>
               </div>
-              <Button onClick={handlePrint} className="bg-gray-800 hover:bg-gray-900">
-                <Printer className="h-4 w-4 mr-2" />
-                PRINT
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={toggleViewMode} 
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  {viewMode === "grid" ? (
+                    <>
+                      <Rows2 className="h-4 w-4" />
+                      List View
+                    </>
+                  ) : (
+                    <>
+                      <Grid3x3 className="h-4 w-4" />
+                      Grid View
+                    </>
+                  )}
+                </Button>
+                <Button onClick={handlePrint} className="bg-gray-800 hover:bg-gray-900">
+                  <Printer className="h-4 w-4 mr-2" />
+                  PRINT
+                </Button>
+              </div>
             </div>
           </div>
         </header>
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-8 print:px-0 print:py-0">
-          <div className="max-w-2xl mx-auto print:max-w-none">
+          <div className="max-w-6xl mx-auto print:max-w-none">
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -147,52 +172,58 @@ const Success = () => {
               </div>
             ) : (
               <div className="print-page">
-                {checkers.map((checker) => (
-                  <div key={checker.id} className="checker-card bg-white border-2 border-gray-800 p-6 mb-6 text-center">
-                    <h2 className="text-xl font-bold mb-4">
-                      {examTypeNames[waecType]} {waecType === "placement" ? "" : "RESULT CHECKER"}
-                    </h2>
-                    
-                    {/* Dotted line */}
-                    <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
-                    
-                    <div className="space-y-2 mb-4">
-                      <p className="text-lg">
-                        <span className="font-semibold">Serial:</span> {checker.serial}
-                      </p>
-                      <p className="text-lg">
-                        <span className="font-semibold">PIN:</span> {checker.pin}
-                      </p>
-                    </div>
-                    
-                    {/* Dotted line */}
-                    <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
-                    
-                    <div className="space-y-3">
-                      <a
-                        href={resultCheckingUrls[waecType]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-                      >
-                        {waecType === "placement" ? "Check Your Placement" : "Check Your Results"}
-                        <ExternalLink className="h-4 w-4 ml-2" />
-                      </a>
+                <div className={
+                  viewMode === "grid" 
+                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-1" 
+                    : "space-y-4"
+                }>
+                  {checkers.map((checker) => (
+                    <div key={checker.id} className="checker-card bg-white border-2 border-gray-800 p-6 text-center">
+                      <h2 className="text-xl font-bold mb-4">
+                        {examTypeNames[waecType]} {waecType === "placement" ? "" : "RESULT CHECKER"}
+                      </h2>
                       
-                      <div className="space-y-1 text-sm">
-                        <p>
-                          <span className="font-semibold">Purchased by:</span> {phoneNumber}
+                      {/* Dotted line */}
+                      <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
+                      
+                      <div className="space-y-2 mb-4">
+                        <p className="text-lg">
+                          <span className="font-semibold">Serial:</span> {checker.serial}
                         </p>
-                        <p>
-                          <span className="font-semibold">Date:</span> {purchaseDate}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          Use your serial and PIN on the website above to {waecType === "placement" ? "check your placement" : "check your results"}
+                        <p className="text-lg">
+                          <span className="font-semibold">PIN:</span> {checker.pin}
                         </p>
                       </div>
+                      
+                      {/* Dotted line */}
+                      <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
+                      
+                      <div className="space-y-3">
+                        <a
+                          href={resultCheckingUrls[waecType]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                        >
+                          {waecType === "placement" ? "Check Your Placement" : "Check Your Results"}
+                          <ExternalLink className="h-4 w-4 ml-2" />
+                        </a>
+                        
+                        <div className="space-y-1 text-sm">
+                          <p>
+                            <span className="font-semibold">Purchased by:</span> {phoneNumber}
+                          </p>
+                          <p>
+                            <span className="font-semibold">Date:</span> {purchaseDate}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Use your serial and PIN on the website above to {waecType === "placement" ? "check your placement" : "check your results"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
