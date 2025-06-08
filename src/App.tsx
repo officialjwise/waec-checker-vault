@@ -17,6 +17,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminOrders from "./pages/AdminOrders";
 import AdminUpload from "./pages/AdminUpload";
 import AdminUsers from "./pages/AdminUsers";
+import AdminInventory from "./pages/AdminInventory";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminLogs from "./pages/AdminLogs";
+import AdminSettings from "./pages/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +43,10 @@ const App = () => (
             <Route path="/admin/orders" element={<AdminOrders />} />
             <Route path="/admin/upload" element={<AdminUpload />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/inventory" element={<AdminInventory />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
+            <Route path="/admin/logs" element={<AdminLogs />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
