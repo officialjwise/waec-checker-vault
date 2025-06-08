@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Home, Printer } from "lucide-react";
+import { ArrowLeft, Home, Printer, ExternalLink } from "lucide-react";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
@@ -20,6 +20,12 @@ const Success = () => {
     bece: "BECE",
     wassce: "WASSCE", 
     novdec: "NOVDEC"
+  };
+
+  const resultCheckingUrls = {
+    bece: "https://eresults.waecgh.org",
+    wassce: "https://ghana.waecdirect.org",
+    novdec: "https://ghana.waecdirect.org"
   };
 
   // Generate mock checkers
@@ -152,16 +158,28 @@ const Success = () => {
                     {/* Dotted line */}
                     <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
                     
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        <span className="font-semibold">Purchased by:</span> {phoneNumber}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Date:</span> {purchaseDate}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Check result at:</span> https://ghana.waecdirect.org
-                      </p>
+                    <div className="space-y-3">
+                      <a
+                        href={resultCheckingUrls[waecType]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                      >
+                        Check Your Results
+                        <ExternalLink className="h-4 w-4 ml-2" />
+                      </a>
+                      
+                      <div className="space-y-1 text-sm">
+                        <p>
+                          <span className="font-semibold">Purchased by:</span> {phoneNumber}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Date:</span> {purchaseDate}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Use your serial and PIN on the website above to check your results
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}

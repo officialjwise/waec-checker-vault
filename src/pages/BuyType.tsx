@@ -33,6 +33,26 @@ const BuyType = () => {
     novdec: "November/December WASSCE"
   };
 
+  const handlePhoneNumberChange = (e) => {
+    let value = e.target.value;
+    // Remove any non-digit characters except spaces and dashes
+    value = value.replace(/[^\d\s-]/g, '');
+    setPhoneNumber(value);
+  };
+
+  const getFullPhoneNumber = () => {
+    if (!phoneNumber.trim()) return "";
+    // Remove any spaces or dashes and ensure it starts with +233
+    const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
+    if (cleanNumber.startsWith('233')) {
+      return `+${cleanNumber}`;
+    } else if (cleanNumber.startsWith('0')) {
+      return `+233${cleanNumber.substring(1)}`;
+    } else {
+      return `+233${cleanNumber}`;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -55,7 +75,8 @@ const BuyType = () => {
     
     if (success) {
       const orderId = `ORD-${Date.now()}`;
-      navigate(`/success?orderId=${orderId}&waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(phoneNumber)}`);
+      const fullPhoneNumber = getFullPhoneNumber();
+      navigate(`/success?orderId=${orderId}&waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(fullPhoneNumber)}`);
     } else {
       toast({
         title: "Payment failed",
@@ -138,21 +159,32 @@ const BuyType = () => {
                   </p>
                 </div>
 
-                {/* Phone Number */}
+                {/* Phone Number with Ghana Flag */}
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="e.g., +233 123 456 789"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="mt-1"
-                    required
-                  />
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                      <span className="text-2xl mr-2">🇬🇭</span>
+                      <span className="text-gray-500 text-sm">+233</span>
+                    </div>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="123 456 789"
+                      value={phoneNumber}
+                      onChange={handlePhoneNumberChange}
+                      className="pl-20"
+                      required
+                    />
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
                     We'll send your checkers to this number via SMS
                   </p>
+                  {phoneNumber && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      Full number: {getFullPhoneNumber()}
+                    </p>
+                  )}
                 </div>
 
                 {/* Email */}
