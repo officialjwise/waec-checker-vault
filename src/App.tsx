@@ -11,6 +11,10 @@ import Retrieve from "./pages/Retrieve";
 import RetrieveVerify from "./pages/RetrieveVerify";
 import Success from "./pages/Success";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminOrders from "./pages/AdminOrders";
+import AdminUpload from "./pages/AdminUpload";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +31,10 @@ const App = () => (
           <Route path="/retrieve" element={<Retrieve />} />
           <Route path="/retrieve/verify" element={<RetrieveVerify />} />
           <Route path="/success" element={<Success />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/orders" element={<AdminOrders />} />
+          <Route path="/admin/upload" element={<AdminUpload />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
