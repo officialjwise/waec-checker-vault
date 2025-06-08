@@ -48,86 +48,90 @@ const AdminOrders = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
       <div className="flex">
         <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
         <div className="flex-1 lg:ml-64 p-4 lg:p-8">
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground">Order Management</h1>
-              <p className="text-muted-foreground">View and manage all customer orders</p>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Order Management
+              </h1>
+              <p className="text-muted-foreground mt-2">Monitor and manage all customer orders</p>
             </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>All Orders</CardTitle>
-                <div className="flex flex-col sm:flex-row gap-4">
+            <Card className="border-0 shadow-xl">
+              <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+                <CardTitle className="text-xl">All Orders</CardTitle>
+                <div className="flex flex-col sm:flex-row gap-4 mt-4">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search orders..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 border-0 bg-background/50"
                     />
                   </div>
-                  <Button variant="outline">
+                  <Button variant="outline" className="bg-background/50 border-0">
                     <Filter className="h-4 w-4 mr-2" />
                     Filter
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" className="bg-background/50 border-0">
                     <Download className="h-4 w-4 mr-2" />
                     Export
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Order ID</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Exam Number</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Actions</TableHead>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">Order ID</TableHead>
+                      <TableHead className="font-semibold">Customer</TableHead>
+                      <TableHead className="font-semibold">Exam Number</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="font-semibold">Amount</TableHead>
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
+                    {orders.map((order, index) => (
+                      <TableRow key={order.id} className={index % 2 === 0 ? 'bg-muted/10' : 'bg-background'}>
                         <TableCell className="font-medium">{order.id}</TableCell>
                         <TableCell>
                           <div>
-                            <div>{order.customer}</div>
+                            <div className="font-medium">{order.customer}</div>
                             <div className="text-sm text-muted-foreground">{order.email}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{order.examNumber}</TableCell>
-                        <TableCell>{order.examType}</TableCell>
+                        <TableCell className="font-mono text-sm">{order.examNumber}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{order.examType}</Badge>
+                        </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(order.status)}>
                             {order.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>{order.amount}</TableCell>
-                        <TableCell>{order.date}</TableCell>
+                        <TableCell className="font-semibold">{order.amount}</TableCell>
+                        <TableCell className="text-sm">{order.date}</TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className="hover:bg-primary hover:text-primary-foreground">
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </Button>
