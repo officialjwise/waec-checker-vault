@@ -21,6 +21,7 @@ const Success = () => {
   const [orderProcessed, setOrderProcessed] = useState(false);
   const [verificationError, setVerificationError] = useState("");
   const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [parametersProcessed, setParametersProcessed] = useState(false);
 
   const examTypeNames = {
     bece: "BECE",
@@ -38,6 +39,9 @@ const Success = () => {
 
   // Process URL parameters on mount and verify payment
   useEffect(() => {
+    // Prevent processing parameters multiple times
+    if (parametersProcessed) return;
+
     // Check for backend callback parameters (snake_case)
     const backendOrderId = searchParams.get("order_id");
     const urlReference = searchParams.get("reference");
@@ -60,6 +64,8 @@ const Success = () => {
       legacyQuantity, 
       legacyPhoneNumber 
     });
+    
+    setParametersProcessed(true);
     
     // Check for Paystack redirect parameters (from backend callback)
     if (backendOrderId && urlReference) {
@@ -93,7 +99,7 @@ const Success = () => {
       // Clean up URL parameters
       navigate("/success", { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, parametersProcessed]);
 
   const verifyPayment = async (reference, orderIdFromCallback = null) => {
     try {
