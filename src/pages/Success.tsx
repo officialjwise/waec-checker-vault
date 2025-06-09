@@ -1,11 +1,11 @@
-
 import { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Home, Printer, ExternalLink, Grid3x3, Rows2 } from "lucide-react";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   const orderId = searchParams.get("orderId");
   const waecType = searchParams.get("waecType");
@@ -30,6 +30,14 @@ const Success = () => {
     novdec: "https://ghana.waecdirect.org",
     placement: "https://cssps.gov.gh"
   };
+
+  // Clean up URL parameters after component mounts
+  useEffect(() => {
+    if (orderId && waecType) {
+      // Replace the current URL without the query parameters
+      navigate("/success", { replace: true });
+    }
+  }, [orderId, waecType, navigate]);
 
   // Generate mock checkers
   useEffect(() => {

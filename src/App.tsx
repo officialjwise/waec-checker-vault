@@ -10,6 +10,7 @@ import BuyType from "./pages/BuyType";
 import Retrieve from "./pages/Retrieve";
 import RetrieveVerify from "./pages/RetrieveVerify";
 import Success from "./pages/Success";
+import PaymentFailed from "./pages/PaymentFailed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/retrieve" element={<Retrieve />} />
           <Route path="/retrieve/verify" element={<RetrieveVerify />} />
           <Route path="/success" element={<Success />} />
+          <Route path="/payment-failed" element={<PaymentFailed />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

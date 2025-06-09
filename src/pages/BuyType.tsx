@@ -113,11 +113,12 @@ const BuyType = () => {
       const fullPhoneNumber = getFullPhoneNumber();
       navigate(`/success?orderId=${orderId}&waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(fullPhoneNumber)}`);
     } else {
-      toast({
-        title: "Payment failed",
-        description: "There was an error processing your payment. Please try again.",
-        variant: "destructive"
-      });
+      // Simulate different failure reasons
+      const errorCodes = ["card_declined", "insufficient_funds", "processing_error", "expired_card"];
+      const randomError = errorCodes[Math.floor(Math.random() * errorCodes.length)];
+      const fullPhoneNumber = getFullPhoneNumber();
+      
+      navigate(`/payment-failed?waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(fullPhoneNumber)}&error=${randomError}`);
       setIsLoading(false);
     }
   };
