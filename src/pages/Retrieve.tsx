@@ -90,7 +90,7 @@ const Retrieve = () => {
                   </Label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                      <span className="text-gray-500 text-sm font-mono">🇬🇭 +233</span>
+                      <span className="text-gray-500 text-sm">🇬🇭 +233</span>
                     </div>
                     <Input
                       id="phone"
@@ -98,7 +98,7 @@ const Retrieve = () => {
                       placeholder="543 482 189"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                      className="pl-20 h-12 text-lg font-mono tracking-wide border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      className="pl-16 h-12 text-base border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                       disabled={isLoading}
                     />

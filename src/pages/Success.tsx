@@ -2,11 +2,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Home, Printer, ExternalLink, Grid3x3, Rows2 } from "lucide-react";
+import { ArrowLeft, Home, Printer, ExternalLink, Grid3x3, Rows2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   const [orderId, setOrderId] = useState("");
   const [waecType, setWaecType] = useState("");
@@ -18,6 +20,7 @@ const Success = () => {
   const [purchaseDate, setPurchaseDate] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [orderProcessed, setOrderProcessed] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
 
   const examTypeNames = {
     bece: "BECE",
@@ -33,32 +36,103 @@ const Success = () => {
     placement: "https://cssps.gov.gh"
   };
 
-  // Process URL parameters on mount
+  // Process URL parameters on mount and verify payment
   useEffect(() => {
-    const urlOrderId = searchParams.get("orderId");
-    const urlWaecType = searchParams.get("waecType");
-    const urlQuantity = parseInt(searchParams.get("quantity") || "1");
-    const urlPhoneNumber = searchParams.get("phone") || "";
+    const urlOrderId = searchParams.get("order_id");
+    const urlReference = searchParams.get("reference");
+    const urlStatus = searchParams.get("status");
+    
+    // Check for Paystack redirect parameters
+    if (urlReference && urlStatus === "success") {
+      verifyPayment(urlReference);
+    } else {
+      // Check for legacy URL parameters
+      const legacyOrderId = searchParams.get("orderId");
+      const legacyWaecType = searchParams.get("waecType");
+      const legacyQuantity = parseInt(searchParams.get("quantity") || "1");
+      const legacyPhoneNumber = searchParams.get("phone") || "";
 
-    if (urlOrderId && urlWaecType) {
-      setOrderId(urlOrderId);
-      setWaecType(urlWaecType);
-      setQuantity(urlQuantity);
-      setPhoneNumber(urlPhoneNumber);
+      if (legacyOrderId && legacyWaecType) {
+        setOrderId(legacyOrderId);
+        setWaecType(legacyWaecType);
+        setQuantity(legacyQuantity);
+        setPhoneNumber(legacyPhoneNumber);
+        setOrderProcessed(true);
+        
+        // Clean up URL parameters after processing
+        navigate("/success", { replace: true });
+      } else {
+        // No valid parameters found
+        setVerificationError("No valid order information found");
+        setIsLoading(false);
+      }
+    }
+  }, [searchParams, navigate]);
+
+  const verifyPayment = async (reference) => {
+    try {
+      setIsLoading(true);
+      setVerificationError("");
+      
+      const response = await fetch(`/api/orders/verify/${reference}`);
+      
+      if (!response.ok) {
+        throw new Error(`Payment verification failed: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Set order details from verification response
+      setOrderId(data.order_id || "");
+      setWaecType(data.waec_type || "");
+      setQuantity(data.quantity || 1);
+      setPhoneNumber(data.phone_number || "");
+      setCheckers(data.checkers || []);
+      
+      // Set purchase date
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }) + ' @ ' + now.toLocaleTimeString('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      setPurchaseDate(formattedDate);
+      
       setOrderProcessed(true);
       
       // Clean up URL parameters after processing
       navigate("/success", { replace: true });
+      
+      toast({
+        title: "Payment Verified",
+        description: "Your payment has been successfully verified and checkers retrieved.",
+      });
+      
+    } catch (error) {
+      console.error("Payment verification error:", error);
+      setVerificationError(error.message || "Failed to verify payment");
+      
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify your payment. Please contact support.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [searchParams, navigate]);
+  };
 
-  // Generate mock checkers after order is processed
+  // Generate mock checkers for legacy flow
   useEffect(() => {
     const generateCheckers = async () => {
-      if (!orderProcessed || !waecType) return;
+      if (!orderProcessed || !waecType || checkers.length > 0) return;
       
       setIsLoading(true);
-      // Simulate API call
+      // Simulate API call for legacy flow
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const now = new Date();
@@ -94,7 +168,7 @@ const Success = () => {
     };
 
     generateCheckers();
-  }, [orderProcessed, waecType, quantity]);
+  }, [orderProcessed, waecType, quantity, checkers.length]);
 
   const handlePrint = () => {
     window.print();
@@ -104,7 +178,21 @@ const Success = () => {
     setViewMode(viewMode === "grid" ? "list" : "grid");
   };
 
-  if (!orderProcessed || !orderId || !waecType) {
+  if (verificationError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50">
+        <div className="max-w-md mx-auto text-center p-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Verification Error</h2>
+          <p className="text-gray-600 mb-4">{verificationError}</p>
+          <Link to="/">
+            <Button>Back to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!orderProcessed && !isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
         <div className="max-w-md mx-auto text-center p-8">
@@ -207,8 +295,10 @@ const Success = () => {
           <div className="max-w-6xl mx-auto">
             {isLoading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Generating your {waecType === "placement" ? "placement checker" : "checkers"}...</p>
+                <Loader2 className="animate-spin h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600">
+                  {searchParams.get("reference") ? "Verifying your payment..." : `Generating your ${waecType === "placement" ? "placement checker" : "checkers"}...`}
+                </p>
               </div>
             ) : (
               <div className={
