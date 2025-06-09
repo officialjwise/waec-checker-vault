@@ -44,12 +44,12 @@ const Header = ({ showBackButton = false, backTo = "/", title, subtitle }: Heade
             </div>
           </div>
           
-          {/* Large WAEC Logo */}
-          <div className="flex items-center space-x-4">
+          {/* Reduced WAEC Logo size */}
+          <div className="flex items-center space-x-3">
             <img 
               src="/lovable-uploads/312005bc-9615-463e-89bf-e6d4fc6d5e90.png" 
               alt="WAEC Logo" 
-              className="w-20 h-20 object-contain"
+              className="w-12 h-12 object-contain"
             />
             <div className="text-right">
               <p className="text-sm font-semibold text-gray-700">Official Partner</p>

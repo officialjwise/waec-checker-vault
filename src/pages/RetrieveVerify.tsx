@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Loader2, Copy, Eye, EyeOff, RotateCcw, MessageSquare } from "lucide-react";
+import { Shield, Loader2, RotateCcw, MessageSquare, Home, ExternalLink, Printer, Grid3x3, Rows2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 
@@ -19,10 +19,23 @@ const RetrieveVerify = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [checkers, setCheckers] = useState([]);
   const [isVerified, setIsVerified] = useState(false);
-  const [showPins, setShowPins] = useState(false);
   const [canResend, setCanResend] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [smsSent, setSmsSent] = useState(false);
+  const [viewMode, setViewMode] = useState("grid");
+  const [purchaseDate, setPurchaseDate] = useState("");
+
+  const examTypeNames = {
+    bece: "BECE",
+    wassce: "WASSCE", 
+    novdec: "NOVDEC"
+  };
+
+  const resultCheckingUrls = {
+    bece: "https://eresults.waecgh.org",
+    wassce: "https://ghana.waecdirect.org",
+    novdec: "https://ghana.waecdirect.org"
+  };
 
   // Auto-fill OTP for test number
   useEffect(() => {
@@ -89,7 +102,7 @@ const RetrieveVerify = () => {
             id: 1,
             waecType: "wassce",
             serial: "WASSCE202400543",
-            pin: "YP543ABC",
+            pin: "YP543ABC12345",
             purchaseDate: "2024-01-15",
             status: "active"
           },
@@ -97,7 +110,7 @@ const RetrieveVerify = () => {
             id: 2,
             waecType: "bece",
             serial: "BECE202400482",
-            pin: "YP482DEF",
+            pin: "YP482DEF67890",
             purchaseDate: "2024-02-10",
             status: "active"
           }
@@ -108,7 +121,7 @@ const RetrieveVerify = () => {
             id: 1,
             waecType: "wassce",
             serial: "WASSCE202400123",
-            pin: "ABC12345",
+            pin: "YP123ABC45678",
             purchaseDate: "2024-01-15",
             status: "active"
           },
@@ -116,7 +129,7 @@ const RetrieveVerify = () => {
             id: 2,
             waecType: "bece",
             serial: "BECE202400456",
-            pin: "DEF67890",
+            pin: "YP456DEF78901",
             purchaseDate: "2024-02-10",
             status: "active"
           }
@@ -125,6 +138,19 @@ const RetrieveVerify = () => {
       
       setCheckers(mockCheckers);
       setIsVerified(true);
+      
+      // Set purchase date
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      }) + ' @ ' + now.toLocaleTimeString('en-US', {
+        hour12: true,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      setPurchaseDate(formattedDate);
       
       toast({
         title: "Verification successful",
@@ -162,30 +188,12 @@ const RetrieveVerify = () => {
     });
   };
 
-  const copyToClipboard = (text, type) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied!",
-      description: `${type} copied to clipboard`,
-    });
+  const handlePrint = () => {
+    window.print();
   };
 
-  const copyAllCheckers = () => {
-    const allCheckers = checkers.map(checker => 
-      `${checker.waecType.toUpperCase()} - Serial: ${checker.serial}, PIN: ${checker.pin}`
-    ).join('\n');
-    
-    navigator.clipboard.writeText(allCheckers);
-    toast({
-      title: "All checkers copied!",
-      description: "All your result checkers copied to clipboard",
-    });
-  };
-
-  const examTypeNames = {
-    bece: "BECE",
-    wassce: "WASSCE", 
-    novdec: "NOVDEC"
+  const toggleViewMode = () => {
+    setViewMode(viewMode === "grid" ? "list" : "grid");
   };
 
   if (!phoneNumber) {
@@ -205,105 +213,174 @@ const RetrieveVerify = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      <Header 
-        showBackButton={true}
-        backTo="/retrieve"
-        title="Phone Verification"
-        subtitle={`+233 ${phoneNumber}`}
-      />
+    <>
+      {/* Print styles */}
+      <style>
+        {`
+          @media print {
+            .no-print {
+              display: none !important;
+            }
+            body {
+              background: white !important;
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            .print-container {
+              background: white !important;
+              margin: 0 !important;
+              padding: 20px !important;
+            }
+            .checker-card {
+              border: 2px solid #000 !important;
+              background: white !important;
+              page-break-inside: avoid !important;
+              margin: 20px 0 !important;
+              padding: 20px !important;
+            }
+            .print-grid {
+              display: grid !important;
+              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
+              gap: 20px !important;
+            }
+            .print-list {
+              display: block !important;
+            }
+            .print-list .checker-card {
+              display: block !important;
+              width: 100% !important;
+            }
+          }
+        `}
+      </style>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {!isVerified ? (
-            // OTP Verification Form
-            <div>
-              <div className="text-center mb-8">
-                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                  <Shield className="h-8 w-8 text-blue-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Enter Verification Code
-                </h2>
-                <p className="text-gray-600">
-                  We've sent a 6-digit code to +233 {phoneNumber}
-                </p>
-                {phoneNumber === "0543482189" && (
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-800">
-                      Demo mode: OTP auto-filled as <strong>123456</strong>
-                    </p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+        <Header 
+          showBackButton={true}
+          backTo="/retrieve"
+          title={isVerified ? "Retrieved Checkers" : "Phone Verification"}
+          subtitle={isVerified ? `Found ${checkers.length} checker(s)` : `+233 ${phoneNumber}`}
+        />
+
+        {/* Main Content */}
+        <main className="container mx-auto px-4 py-8 print-container">
+          <div className="max-w-6xl mx-auto">
+            {!isVerified ? (
+              // OTP Verification Form
+              <div className="max-w-md mx-auto">
+                <div className="text-center mb-8">
+                  <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <Shield className="h-8 w-8 text-blue-600" />
                   </div>
-                )}
-              </div>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <form onSubmit={handleVerifyOtp} className="space-y-6">
-                    <div>
-                      <Label htmlFor="otp">Verification Code</Label>
-                      <Input
-                        id="otp"
-                        type="text"
-                        placeholder="000000"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                        className="mt-1 text-center text-2xl tracking-widest"
-                        maxLength={6}
-                        required
-                        disabled={isLoading}
-                      />
-                      <p className="text-sm text-gray-500 mt-1 text-center">
-                        Enter the 6-digit code sent to your phone
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Enter Verification Code
+                  </h2>
+                  <p className="text-gray-600">
+                    We've sent a 6-digit code to +233 {phoneNumber}
+                  </p>
+                  {phoneNumber === "0543482189" && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        Demo mode: OTP auto-filled as <strong>123456</strong>
                       </p>
                     </div>
+                  )}
+                </div>
 
-                    <Button
-                      type="submit"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-                      disabled={isLoading || otp.length !== 6}
+                <Card>
+                  <CardContent className="pt-6">
+                    <form onSubmit={handleVerifyOtp} className="space-y-6">
+                      <div>
+                        <Label htmlFor="otp">Verification Code</Label>
+                        <Input
+                          id="otp"
+                          type="text"
+                          placeholder="000000"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          className="mt-1 text-center text-2xl tracking-widest"
+                          maxLength={6}
+                          required
+                          disabled={isLoading}
+                        />
+                        <p className="text-sm text-gray-500 mt-1 text-center">
+                          Enter the 6-digit code sent to your phone
+                        </p>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                        disabled={isLoading || otp.length !== 6}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                            Verifying...
+                          </>
+                        ) : (
+                          "Verify Code"
+                        )}
+                      </Button>
+
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={handleResendOtp}
+                          disabled={!canResend}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          {canResend ? "Resend Code" : `Resend in ${resendTimer}s`}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              // Display Retrieved Checkers (Same design as Success page)
+              <div>
+                {/* Header with controls - Hidden in print */}
+                <div className="flex items-center justify-between mb-8 no-print">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Your Retrieved Checkers
+                    </h2>
+                    <p className="text-gray-600">
+                      Found {checkers.length} checker(s) for +233 {phoneNumber}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      onClick={toggleViewMode} 
+                      variant="outline" 
+                      size="sm"
+                      className="flex items-center gap-2"
                     >
-                      {isLoading ? (
+                      {viewMode === "grid" ? (
                         <>
-                          <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                          Verifying...
+                          <Rows2 className="h-4 w-4" />
+                          List View
                         </>
                       ) : (
-                        "Verify Code"
+                        <>
+                          <Grid3x3 className="h-4 w-4" />
+                          Grid View
+                        </>
                       )}
                     </Button>
-
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleResendOtp}
-                        disabled={!canResend}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        {canResend ? "Resend Code" : `Resend in ${resendTimer}s`}
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            // Display Retrieved Checkers
-            <div>
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Your Result Checkers
-                </h2>
-                <p className="text-gray-600">
-                  Found {checkers.length} checker(s) for +233 {phoneNumber}
-                </p>
+                    <Button onClick={handlePrint} className="bg-gray-800 hover:bg-gray-900">
+                      <Printer className="h-4 w-4 mr-2" />
+                      PRINT
+                    </Button>
+                  </div>
+                </div>
                 
                 {/* SMS Notification Status */}
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div className="mb-6 p-3 bg-green-50 border border-green-200 rounded-lg no-print">
                   <div className="flex items-center justify-center">
                     <MessageSquare className="h-5 w-5 text-green-600 mr-2" />
                     <span className="text-sm text-green-800">
@@ -311,106 +388,81 @@ const RetrieveVerify = () => {
                     </span>
                   </div>
                 </div>
-              </div>
 
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <CardTitle>Your Checkers ({checkers.length})</CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowPins(!showPins)}
-                      >
-                        {showPins ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                        {showPins ? "Hide" : "Show"} PINs
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyAllCheckers}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy All
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {checkers.map((checker) => (
-                      <div key={checker.id} className="bg-gray-50 p-4 rounded-lg border">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="font-semibold text-lg text-gray-900">
-                              {examTypeNames[checker.waecType]} Result Checker
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                              Purchased: {new Date(checker.purchaseDate).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                            {checker.status}
-                          </span>
-                        </div>
+                {/* Checkers Display */}
+                <div className={
+                  viewMode === "grid" 
+                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print-grid" 
+                    : "space-y-4 print-list"
+                }>
+                  {checkers.map((checker) => (
+                    <div key={checker.id} className="checker-card bg-white border-2 border-gray-800 p-6 text-center">
+                      <h3 className="text-xl font-bold mb-4">
+                        {examTypeNames[checker.waecType]} RESULT CHECKER
+                      </h3>
+                      
+                      {/* Dotted line */}
+                      <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
+                      
+                      <div className="space-y-2 mb-4">
+                        <p className="text-lg">
+                          <span className="font-semibold">Serial:</span> {checker.serial}
+                        </p>
+                        <p className="text-lg">
+                          <span className="font-semibold">PIN:</span> {checker.pin}
+                        </p>
+                      </div>
+                      
+                      {/* Dotted line */}
+                      <div className="border-t-2 border-dotted border-gray-600 mb-4"></div>
+                      
+                      <div className="space-y-3">
+                        <a
+                          href={resultCheckingUrls[checker.waecType]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                        >
+                          Check Your Results
+                          <ExternalLink className="h-4 w-4 ml-2" />
+                        </a>
                         
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div>
-                            <Label className="text-sm font-medium text-gray-600">Serial Number</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <code className="bg-white px-3 py-2 rounded border font-mono text-sm flex-1">
-                                {checker.serial}
-                              </code>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => copyToClipboard(checker.serial, "Serial number")}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-sm font-medium text-gray-600">PIN</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                              <code className="bg-white px-3 py-2 rounded border font-mono text-sm flex-1">
-                                {showPins ? checker.pin : "••••••••"}
-                              </code>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => copyToClipboard(checker.pin, "PIN")}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
+                        <div className="space-y-1 text-sm">
+                          <p>
+                            <span className="font-semibold">Retrieved by:</span> {phoneNumber}
+                          </p>
+                          <p>
+                            <span className="font-semibold">Date:</span> {purchaseDate}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Use your serial and PIN on the website above to check your results
+                          </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  ))}
+                </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 mt-6 justify-center">
-                <Link to="/">
-                  <Button variant="outline" className="w-full sm:w-auto">
-                    Back to Home
-                  </Button>
-                </Link>
-                <Link to="/buy">
-                  <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-                    Buy More Checkers
-                  </Button>
-                </Link>
+                {/* Action Buttons - Hidden in print */}
+                <div className="flex flex-col sm:flex-row gap-4 mt-8 justify-center no-print">
+                  <Link to="/">
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <Home className="h-4 w-4 mr-2" />
+                      Back to Home
+                    </Button>
+                  </Link>
+                  <Link to="/buy">
+                    <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+                      Buy More Checkers
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 

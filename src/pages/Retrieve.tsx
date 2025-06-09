@@ -84,13 +84,13 @@ const Retrieve = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
                     Phone Number
                   </Label>
-                  <div className="mt-1 relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 text-sm">🇬🇭 +233</span>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                      <span className="text-gray-500 text-sm font-mono">🇬🇭 +233</span>
                     </div>
                     <Input
                       id="phone"
@@ -98,19 +98,19 @@ const Retrieve = () => {
                       placeholder="543 482 189"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                      className="pl-20 text-lg font-mono tracking-wide"
+                      className="pl-20 h-12 text-lg font-mono tracking-wide border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                       disabled={isLoading}
                     />
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500">
                     Enter the phone number you used when purchasing checkers
                   </p>
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 h-12 text-lg font-medium"
                   disabled={isLoading}
                 >
                   {isLoading ? (
