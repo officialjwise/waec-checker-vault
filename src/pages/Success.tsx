@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,15 +8,16 @@ const Success = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
-  const orderId = searchParams.get("orderId");
-  const waecType = searchParams.get("waecType");
-  const quantity = parseInt(searchParams.get("quantity") || "1");
-  const phoneNumber = searchParams.get("phone") || "";
+  const [orderId, setOrderId] = useState("");
+  const [waecType, setWaecType] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [phoneNumber, setPhoneNumber] = useState("");
   
   const [checkers, setCheckers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseDate, setPurchaseDate] = useState("");
-  const [viewMode, setViewMode] = useState("grid"); // "grid" or "list"
+  const [viewMode, setViewMode] = useState("grid");
+  const [orderProcessed, setOrderProcessed] = useState(false);
 
   const examTypeNames = {
     bece: "BECE",
@@ -31,17 +33,30 @@ const Success = () => {
     placement: "https://cssps.gov.gh"
   };
 
-  // Clean up URL parameters after component mounts
+  // Process URL parameters on mount
   useEffect(() => {
-    if (orderId && waecType) {
-      // Replace the current URL without the query parameters
+    const urlOrderId = searchParams.get("orderId");
+    const urlWaecType = searchParams.get("waecType");
+    const urlQuantity = parseInt(searchParams.get("quantity") || "1");
+    const urlPhoneNumber = searchParams.get("phone") || "";
+
+    if (urlOrderId && urlWaecType) {
+      setOrderId(urlOrderId);
+      setWaecType(urlWaecType);
+      setQuantity(urlQuantity);
+      setPhoneNumber(urlPhoneNumber);
+      setOrderProcessed(true);
+      
+      // Clean up URL parameters after processing
       navigate("/success", { replace: true });
     }
-  }, [orderId, waecType, navigate]);
+  }, [searchParams, navigate]);
 
-  // Generate mock checkers
+  // Generate mock checkers after order is processed
   useEffect(() => {
     const generateCheckers = async () => {
+      if (!orderProcessed || !waecType) return;
+      
       setIsLoading(true);
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -78,10 +93,8 @@ const Success = () => {
       setIsLoading(false);
     };
 
-    if (orderId && waecType) {
-      generateCheckers();
-    }
-  }, [orderId, waecType, quantity]);
+    generateCheckers();
+  }, [orderProcessed, waecType, quantity]);
 
   const handlePrint = () => {
     window.print();
@@ -91,7 +104,7 @@ const Success = () => {
     setViewMode(viewMode === "grid" ? "list" : "grid");
   };
 
-  if (!orderId || !waecType) {
+  if (!orderProcessed || !orderId || !waecType) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
         <div className="max-w-md mx-auto text-center p-8">
