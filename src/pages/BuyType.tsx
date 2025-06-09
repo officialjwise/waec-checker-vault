@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, AlertCircle, Loader2, GraduationCap } from "lucide-react";
+import { ArrowLeft, AlertCircle, Loader2, GraduationCap, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const BuyType = () => {
   const { waecType } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   const [quantity, setQuantity] = useState(1);
@@ -37,6 +38,15 @@ const BuyType = () => {
     novdec: "November/December WASSCE",
     placement: "School Placement Checker"
   };
+
+  useEffect(() => {
+    if (location.state?.prefillQuantity) {
+      setQuantity(location.state.prefillQuantity);
+    }
+    if (location.state?.prefillPhone) {
+      setPhoneNumber(location.state.prefillPhone);
+    }
+  }, [location.state]);
 
   const getUnitPrice = () => {
     return waecType === "placement" ? 20 : 17.5;
@@ -121,6 +131,10 @@ const BuyType = () => {
       navigate(`/payment-failed?waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(fullPhoneNumber)}&error=${randomError}`);
       setIsLoading(false);
     }
+  };
+
+  const handleCancelPayment = () => {
+    navigate("/");
   };
 
   if (!examTypeNames[waecType]) {
@@ -275,21 +289,33 @@ const BuyType = () => {
                   </div>
                 </div>
 
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      Processing Payment...
-                    </>
-                  ) : (
-                    "Proceed to Pay"
-                  )}
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        Processing Payment...
+                      </>
+                    ) : (
+                      "Proceed to Pay"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleCancelPayment}
+                    variant="outline"
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                    disabled={isLoading}
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Payment
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
