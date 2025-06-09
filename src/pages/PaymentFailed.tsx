@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, ArrowLeft, Home, RefreshCw, CreditCard } from "lucide-react";
+import { AlertCircle, ArrowLeft, Home, RefreshCw, CreditCard, X } from "lucide-react";
 
 const PaymentFailed = () => {
   const [searchParams] = useSearchParams();
@@ -64,6 +64,10 @@ const PaymentFailed = () => {
         }
       });
     }
+  };
+
+  const handleCancelPayment = () => {
+    navigate("/");
   };
 
   return (
@@ -141,8 +145,20 @@ const PaymentFailed = () => {
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Try Again
                 </Button>
-                <Link to="/" className="flex-1">
-                  <Button variant="outline" className="w-full">
+                <Button 
+                  onClick={handleCancelPayment}
+                  variant="outline" 
+                  className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel Payment
+                </Button>
+              </div>
+
+              {/* Additional Navigation */}
+              <div className="flex justify-center">
+                <Link to="/">
+                  <Button variant="ghost" className="text-gray-600">
                     <Home className="h-4 w-4 mr-2" />
                     Back to Home
                   </Button>
