@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -39,74 +38,83 @@ const Success = () => {
 
   // Process URL parameters on mount and verify payment
   useEffect(() => {
-    const urlOrderId = searchParams.get("order_id");
+    // Check for backend callback parameters (snake_case)
+    const backendOrderId = searchParams.get("order_id");
     const urlReference = searchParams.get("reference");
     const urlStatus = searchParams.get("status");
+    const trxRef = searchParams.get("trxref");
     
-    console.log("URL parameters:", { urlOrderId, urlReference, urlStatus });
+    // Check for legacy parameters (camelCase)
+    const legacyOrderId = searchParams.get("orderId");
+    const legacyWaecType = searchParams.get("waecType");
+    const legacyQuantity = parseInt(searchParams.get("quantity") || "1");
+    const legacyPhoneNumber = searchParams.get("phone") || "";
     
-    // Check for Paystack redirect parameters
-    if (urlReference && urlStatus === "success") {
+    console.log("URL parameters:", { 
+      backendOrderId, 
+      urlReference, 
+      urlStatus, 
+      trxRef,
+      legacyOrderId, 
+      legacyWaecType, 
+      legacyQuantity, 
+      legacyPhoneNumber 
+    });
+    
+    // Check for Paystack redirect parameters (from backend callback)
+    if (backendOrderId && urlReference) {
+      console.log("Found backend callback parameters, verifying payment...");
+      verifyPayment(urlReference, backendOrderId);
+    } else if (urlReference && (urlStatus === "success" || trxRef)) {
       console.log("Found Paystack parameters, verifying payment...");
       verifyPayment(urlReference);
+    } else if (legacyOrderId && legacyWaecType) {
+      // Handle legacy URL parameters
+      console.log("Processing legacy order parameters");
+      setOrderId(legacyOrderId);
+      setWaecType(legacyWaecType);
+      setQuantity(legacyQuantity);
+      setPhoneNumber(legacyPhoneNumber);
+      setOrderProcessed(true);
+      
+      // Clean up URL parameters after processing
+      navigate("/success", { replace: true });
     } else {
-      // Check for legacy URL parameters
-      const legacyOrderId = searchParams.get("orderId");
-      const legacyWaecType = searchParams.get("waecType");
-      const legacyQuantity = parseInt(searchParams.get("quantity") || "1");
-      const legacyPhoneNumber = searchParams.get("phone") || "";
-
-      console.log("Legacy parameters:", { legacyOrderId, legacyWaecType, legacyQuantity, legacyPhoneNumber });
-
-      if (legacyOrderId && legacyWaecType) {
-        console.log("Processing legacy order parameters");
-        setOrderId(legacyOrderId);
-        setWaecType(legacyWaecType);
-        setQuantity(legacyQuantity);
-        setPhoneNumber(legacyPhoneNumber);
-        setOrderProcessed(true);
-        
-        // Clean up URL parameters after processing
-        navigate("/success", { replace: true });
-      } else {
-        // For demo purposes, let's create a mock successful order if no parameters are found
-        // This prevents the "order not found" error during development/testing
-        console.log("No valid parameters found, creating mock order for demo");
-        
-        // Create a mock order with WASSCE checkers
-        setOrderId(`DEMO-${Date.now()}`);
-        setWaecType("wassce");
-        setQuantity(2);
-        setPhoneNumber("0241234567");
-        setOrderProcessed(true);
-        
-        // Clean up URL parameters
-        navigate("/success", { replace: true });
-      }
+      // For demo purposes, let's create a mock successful order if no parameters are found
+      console.log("No valid parameters found, creating mock order for demo");
+      
+      // Create a mock order with WASSCE checkers
+      setOrderId(`DEMO-${Date.now()}`);
+      setWaecType("wassce");
+      setQuantity(2);
+      setPhoneNumber("0241234567");
+      setOrderProcessed(true);
+      
+      // Clean up URL parameters
+      navigate("/success", { replace: true });
     }
   }, [searchParams, navigate]);
 
-  const verifyPayment = async (reference) => {
+  const verifyPayment = async (reference, orderIdFromCallback = null) => {
     try {
       setIsLoading(true);
       setVerificationError("");
       
-      console.log("Verifying payment for reference:", reference);
+      console.log("Verifying payment for reference:", reference, "with order ID:", orderIdFromCallback);
       
       // For now, since the backend API might not be set up, let's mock a successful verification
-      // In a real app, this would call your backend API
+      // In a real app, this would call your backend API to verify the payment and get order details
       console.log("Mocking successful payment verification...");
       
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mock successful verification response
+      // Mock successful verification response with realistic data
       const mockData = {
-        order_id: `PAY-${reference.slice(-8)}`,
-        waec_type: "wassce",
-        quantity: 2,
-        phone_number: "0241234567",
-        checkers: []
+        order_id: orderIdFromCallback || `PAY-${reference.slice(-8)}`,
+        waec_type: "wassce", // This should come from your backend based on the actual order
+        quantity: 5, // This should come from your backend based on the actual order
+        phone_number: "+233241234567" // This should come from your backend based on the actual order
       };
       
       console.log("Mock verification data:", mockData);
@@ -149,9 +157,8 @@ const Success = () => {
         description: "Failed to verify your payment. Please contact support.",
         variant: "destructive"
       });
-    } finally {
-      // Don't set loading to false here, let the checker generation handle it
     }
+    // Don't set loading to false here, let the checker generation handle it
   };
 
   // Generate mock checkers for both flows
@@ -188,6 +195,7 @@ const Success = () => {
         };
         setCheckers([placementChecker]);
       } else {
+        // Use the actual quantity from the order, not hardcoded value
         const generatedCheckers = Array.from({ length: quantity }, (_, index) => ({
           id: index + 1,
           serial: `WGC${Date.now()}${String(index + 1).padStart(2, '0')}`,
@@ -196,7 +204,7 @@ const Success = () => {
         setCheckers(generatedCheckers);
       }
       
-      console.log("Generated checkers:", checkers.length > 0 ? checkers : "Will be set in next render");
+      console.log(`Generated ${quantity} checkers for ${waecType}`);
       setIsLoading(false);
     };
 
@@ -235,7 +243,7 @@ const Success = () => {
             {searchParams.get("reference") 
               ? "Verifying your payment..." 
               : orderProcessed && waecType
-                ? `Generating your ${waecType === "placement" ? "placement checker" : "checkers"}...`
+                ? `Generating your ${quantity} ${waecType === "placement" ? "placement checker" : "checkers"}...`
                 : "Processing your order..."
             }
           </p>
