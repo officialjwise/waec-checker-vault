@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Phone, Loader2, GraduationCap } from "lucide-react";
+import { Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/Header";
 
 const Retrieve = () => {
   const navigate = useNavigate();
@@ -32,8 +33,8 @@ const Retrieve = () => {
     // Simulate API call to request OTP
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Simulate checking if phone number has purchases (80% success rate)
-    const hasCheckers = Math.random() > 0.2;
+    // Check if it's our test number or simulate checking if phone number has purchases (80% success rate)
+    const hasCheckers = phoneNumber === "0543482189" || Math.random() > 0.2;
     
     if (hasCheckers) {
       toast({
@@ -55,23 +56,12 @@ const Retrieve = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center">
-            <Link to="/" className="mr-4">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex items-center">
-              <GraduationCap className="h-6 w-6 text-blue-600 mr-2" />
-              <h1 className="text-xl font-bold text-gray-900">Retrieve Result Checkers</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        showBackButton={true}
+        backTo="/"
+        title="Retrieve Result Checkers"
+        subtitle="Access your previously purchased checkers"
+      />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -95,17 +85,24 @@ const Retrieve = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="e.g., +233 123 456 789"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="mt-1"
-                    required
-                    disabled={isLoading}
-                  />
+                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                    Phone Number
+                  </Label>
+                  <div className="mt-1 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 text-sm">🇬🇭 +233</span>
+                    </div>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="543 482 189"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                      className="pl-20 text-lg font-mono tracking-wide"
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">
                     Enter the phone number you used when purchasing checkers
                   </p>

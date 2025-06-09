@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Shield, Loader2, Copy, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { Shield, Loader2, Copy, Eye, EyeOff, RotateCcw, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/Header";
 
 const RetrieveVerify = () => {
   const [searchParams] = useSearchParams();
@@ -21,6 +22,14 @@ const RetrieveVerify = () => {
   const [showPins, setShowPins] = useState(false);
   const [canResend, setCanResend] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
+  const [smsSent, setSmsSent] = useState(false);
+
+  // Auto-fill OTP for test number
+  useEffect(() => {
+    if (phoneNumber === "0543482189") {
+      setOtp("123456");
+    }
+  }, [phoneNumber]);
 
   // Timer for resend button
   useEffect(() => {
@@ -31,6 +40,23 @@ const RetrieveVerify = () => {
       setCanResend(true);
     }
   }, [resendTimer, canResend]);
+
+  const sendSmsNotification = async (checkersData) => {
+    setSmsSent(false);
+    
+    // Simulate SMS sending delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const smsMessage = `Young Press - Your checkers retrieved successfully! You have ${checkersData.length} active result checker(s). Visit our portal to view details. Thank you for using our services.`;
+    
+    console.log(`SMS sent to ${phoneNumber}: ${smsMessage}`);
+    
+    setSmsSent(true);
+    toast({
+      title: "SMS sent successfully",
+      description: `Notification sent to ${phoneNumber} with your checker details.`,
+    });
+  };
 
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
@@ -49,37 +75,53 @@ const RetrieveVerify = () => {
     // Simulate OTP verification
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Simulate verification success (90% success rate)
-    const success = Math.random() > 0.1;
+    // Check if it's our test number with correct OTP or simulate verification
+    const isTestNumber = phoneNumber === "0543482189" && otp === "123456";
+    const success = isTestNumber || Math.random() > 0.1;
     
     if (success) {
-      // Generate mock checkers for this phone number
-      const mockCheckers = [
-        {
-          id: 1,
-          waecType: "wassce",
-          serial: "WASSCE202400123",
-          pin: "ABC12345",
-          purchaseDate: "2024-01-15",
-          status: "active"
-        },
-        {
-          id: 2,
-          waecType: "bece",
-          serial: "BECE202400456",
-          pin: "DEF67890",
-          purchaseDate: "2024-02-10",
-          status: "active"
-        },
-        {
-          id: 3,
-          waecType: "wassce",
-          serial: "WASSCE202400789",
-          pin: "GHI54321",
-          purchaseDate: "2024-03-05",
-          status: "active"
-        }
-      ];
+      // Generate specific checkers for test number or mock checkers for others
+      let mockCheckers;
+      
+      if (isTestNumber) {
+        mockCheckers = [
+          {
+            id: 1,
+            waecType: "wassce",
+            serial: "WASSCE202400543",
+            pin: "YP543ABC",
+            purchaseDate: "2024-01-15",
+            status: "active"
+          },
+          {
+            id: 2,
+            waecType: "bece",
+            serial: "BECE202400482",
+            pin: "YP482DEF",
+            purchaseDate: "2024-02-10",
+            status: "active"
+          }
+        ];
+      } else {
+        mockCheckers = [
+          {
+            id: 1,
+            waecType: "wassce",
+            serial: "WASSCE202400123",
+            pin: "ABC12345",
+            purchaseDate: "2024-01-15",
+            status: "active"
+          },
+          {
+            id: 2,
+            waecType: "bece",
+            serial: "BECE202400456",
+            pin: "DEF67890",
+            purchaseDate: "2024-02-10",
+            status: "active"
+          }
+        ];
+      }
       
       setCheckers(mockCheckers);
       setIsVerified(true);
@@ -88,6 +130,9 @@ const RetrieveVerify = () => {
         title: "Verification successful",
         description: `Found ${mockCheckers.length} result checkers for your account.`,
       });
+
+      // Send SMS notification after successful retrieval
+      await sendSmsNotification(mockCheckers);
     } else {
       toast({
         title: "Invalid verification code",
@@ -105,6 +150,11 @@ const RetrieveVerify = () => {
     
     // Simulate resend OTP
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Auto-fill for test number again
+    if (phoneNumber === "0543482189") {
+      setOtp("123456");
+    }
     
     toast({
       title: "Code resent",
@@ -156,23 +206,12 @@ const RetrieveVerify = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center">
-            <Link to="/retrieve" className="mr-4">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Phone Verification</h1>
-              <p className="text-sm text-gray-600">{phoneNumber}</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header 
+        showBackButton={true}
+        backTo="/retrieve"
+        title="Phone Verification"
+        subtitle={`+233 ${phoneNumber}`}
+      />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -188,8 +227,15 @@ const RetrieveVerify = () => {
                   Enter Verification Code
                 </h2>
                 <p className="text-gray-600">
-                  We've sent a 6-digit code to {phoneNumber}
+                  We've sent a 6-digit code to +233 {phoneNumber}
                 </p>
+                {phoneNumber === "0543482189" && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      Demo mode: OTP auto-filled as <strong>123456</strong>
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Card>
@@ -253,8 +299,18 @@ const RetrieveVerify = () => {
                   Your Result Checkers
                 </h2>
                 <p className="text-gray-600">
-                  Found {checkers.length} checker(s) for {phoneNumber}
+                  Found {checkers.length} checker(s) for +233 {phoneNumber}
                 </p>
+                
+                {/* SMS Notification Status */}
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-center">
+                    <MessageSquare className="h-5 w-5 text-green-600 mr-2" />
+                    <span className="text-sm text-green-800">
+                      {smsSent ? "SMS notification sent successfully!" : "Sending SMS notification..."}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <Card>
