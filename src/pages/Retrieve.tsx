@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -14,7 +15,45 @@ const Retrieve = () => {
   const { toast } = useToast();
   
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [country, setCountry] = useState("ghana");
   const [isLoading, setIsLoading] = useState(false);
+
+  const countries = {
+    ghana: { name: "Ghana", code: "+233", flag: "🇬🇭" },
+    nigeria: { name: "Nigeria", code: "+234", flag: "🇳🇬" }
+  };
+
+  const handlePhoneNumberChange = (e) => {
+    let value = e.target.value;
+    value = value.replace(/[^\d\s-]/g, '');
+    setPhoneNumber(value);
+  };
+
+  const getFullPhoneNumber = () => {
+    if (!phoneNumber.trim()) return "";
+    const selectedCountry = countries[country];
+    const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
+    
+    if (country === "ghana") {
+      if (cleanNumber.startsWith('233')) {
+        return `+${cleanNumber}`;
+      } else if (cleanNumber.startsWith('0')) {
+        return `+233${cleanNumber.substring(1)}`;
+      } else {
+        return `+233${cleanNumber}`;
+      }
+    } else if (country === "nigeria") {
+      if (cleanNumber.startsWith('234')) {
+        return `+${cleanNumber}`;
+      } else if (cleanNumber.startsWith('0')) {
+        return `+234${cleanNumber.substring(1)}`;
+      } else {
+        return `+234${cleanNumber}`;
+      }
+    }
+    
+    return `${selectedCountry.code}${cleanNumber}`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,8 +72,11 @@ const Retrieve = () => {
     // Simulate API call to request OTP
     await new Promise(resolve => setTimeout(resolve, 2000));
     
+    const fullPhoneNumber = getFullPhoneNumber();
+    const cleanPhoneForCheck = fullPhoneNumber.replace(/\D/g, '');
+    
     // Check if it's our test number or simulate checking if phone number has purchases (80% success rate)
-    const hasCheckers = phoneNumber === "0543482189" || Math.random() > 0.2;
+    const hasCheckers = cleanPhoneForCheck.includes("233543482189") || Math.random() > 0.2;
     
     if (hasCheckers) {
       toast({
@@ -42,8 +84,12 @@ const Retrieve = () => {
         description: "We've sent a verification code to your phone number.",
       });
       
-      // Navigate to verify page with phone number
-      navigate(`/retrieve/verify?phone=${encodeURIComponent(phoneNumber)}`);
+      // Navigate to verify page with phone number (send just the local part)
+      const localNumber = country === "ghana" 
+        ? (phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber)
+        : (phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber);
+      
+      navigate(`/retrieve/verify?phone=${encodeURIComponent(`0${localNumber}`)}`);
     } else {
       toast({
         title: "No checkers found",
@@ -85,20 +131,37 @@ const Retrieve = () => {
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                    Phone Number
+                  <Label htmlFor="phone" className="text-base font-semibold text-gray-900">
+                    Phone Number *
                   </Label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                      <span className="text-gray-500 text-sm">🇬🇭 +233</span>
-                    </div>
+                  <div className="flex gap-3">
+                    <Select value={country} onValueChange={setCountry}>
+                      <SelectTrigger className="w-40 h-12 border-2">
+                        <SelectValue>
+                          <div className="flex items-center">
+                            <span className="mr-2">{countries[country].flag}</span>
+                            <span className="text-sm">{countries[country].code}</span>
+                          </div>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(countries).map(([key, countryData]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex items-center">
+                              <span className="mr-2">{countryData.flag}</span>
+                              <span>{countryData.name} ({countryData.code})</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="543 482 189"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                      className="pl-16 h-12 text-base border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      onChange={handlePhoneNumberChange}
+                      className="flex-1 h-12 text-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                       required
                       disabled={isLoading}
                     />
@@ -106,6 +169,11 @@ const Retrieve = () => {
                   <p className="text-sm text-gray-500">
                     Enter the phone number you used when purchasing checkers
                   </p>
+                  {phoneNumber && (
+                    <p className="text-sm text-blue-600 font-medium">
+                      Full number: {getFullPhoneNumber()}
+                    </p>
+                  )}
                 </div>
 
                 <Button

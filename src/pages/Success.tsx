@@ -62,9 +62,15 @@ const Success = () => {
         // Clean up URL parameters after processing
         navigate("/success", { replace: true });
       } else {
-        // No valid parameters found
-        setVerificationError("No valid order information found");
+        // Redirect to home if no valid parameters
+        toast({
+          title: "No Order Found",
+          description: "No valid order information found. Redirecting to home page.",
+          variant: "destructive"
+        });
+        setTimeout(() => navigate("/"), 2000);
         setIsLoading(false);
+        return;
       }
     }
   }, [searchParams, navigate]);
@@ -192,15 +198,26 @@ const Success = () => {
     );
   }
 
-  if (!orderProcessed && !isLoading) {
+  // Show loading while processing redirect
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">
+            {searchParams.get("reference") ? "Verifying your payment..." : "Loading your order..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!orderProcessed) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
         <div className="max-w-md mx-auto text-center p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Order</h2>
-          <p className="text-gray-600 mb-4">No order information found.</p>
-          <Link to="/">
-            <Button>Back to Home</Button>
-          </Link>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Redirecting...</h2>
+          <p className="text-gray-600 mb-4">Taking you back to the home page.</p>
         </div>
       </div>
     );
