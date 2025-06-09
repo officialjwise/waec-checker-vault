@@ -1,40 +1,13 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Search, GraduationCap, MapPin, CheckCircle, Users, Award, Shield } from "lucide-react";
+import Header from "@/components/Header";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
-      {/* Header */}
-      <header className="bg-white shadow-lg border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                <GraduationCap className="h-7 w-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Young Press</h1>
-                <p className="text-sm text-gray-600">Powered by WAEC Official Services</p>
-              </div>
-            </div>
-            {/* WAEC Logo */}
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/lovable-uploads/312005bc-9615-463e-89bf-e6d4fc6d5e90.png" 
-                alt="WAEC Logo" 
-                className="w-16 h-16 object-contain"
-              />
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-700">Official Partner</p>
-                <p className="text-xs text-gray-500">West African Examinations Council</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="py-16 px-4">
