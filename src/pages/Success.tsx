@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -39,7 +38,7 @@ const Success = () => {
   };
 
   // Backend API base URL (replace with actual backend URL once deployed)
-  const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:3000";
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
 
   // Process URL parameters on mount and verify payment
   useEffect(() => {
