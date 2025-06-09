@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ const Success = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [orderProcessed, setOrderProcessed] = useState(false);
   const [verificationError, setVerificationError] = useState("");
+  const [shouldRedirect, setShouldRedirect] = useState(false);
 
   const examTypeNames = {
     bece: "BECE",
@@ -62,18 +62,28 @@ const Success = () => {
         // Clean up URL parameters after processing
         navigate("/success", { replace: true });
       } else {
-        // Redirect to home if no valid parameters
+        // Set flag to redirect after a delay instead of immediate redirect
+        console.log("No valid order parameters found, will redirect after delay");
+        setShouldRedirect(true);
+      }
+    }
+  }, [searchParams, navigate]);
+
+  // Handle delayed redirect when no valid parameters are found
+  useEffect(() => {
+    if (shouldRedirect) {
+      const timer = setTimeout(() => {
         toast({
           title: "No Order Found",
           description: "No valid order information found. Redirecting to home page.",
           variant: "destructive"
         });
-        setTimeout(() => navigate("/"), 2000);
-        setIsLoading(false);
-        return;
-      }
+        navigate("/");
+      }, 3000); // Wait 3 seconds before redirecting
+
+      return () => clearTimeout(timer);
     }
-  }, [searchParams, navigate]);
+  }, [shouldRedirect, navigate, toast]);
 
   const verifyPayment = async (reference) => {
     try {
@@ -198,14 +208,19 @@ const Success = () => {
     );
   }
 
-  // Show loading while processing redirect
-  if (isLoading) {
+  // Show loading while processing redirect or when shouldRedirect is true
+  if (isLoading || shouldRedirect) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="animate-spin h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">
-            {searchParams.get("reference") ? "Verifying your payment..." : "Loading your order..."}
+            {shouldRedirect 
+              ? "No order found. Redirecting to home page..." 
+              : searchParams.get("reference") 
+                ? "Verifying your payment..." 
+                : "Loading your order..."
+            }
           </p>
         </div>
       </div>
@@ -216,8 +231,8 @@ const Success = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
         <div className="max-w-md mx-auto text-center p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Redirecting...</h2>
-          <p className="text-gray-600 mb-4">Taking you back to the home page.</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Processing Order...</h2>
+          <p className="text-gray-600 mb-4">Please wait while we process your order information.</p>
         </div>
       </div>
     );
