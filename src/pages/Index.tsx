@@ -20,11 +20,13 @@ const Index = () => {
                 <p className="text-sm text-gray-600">Powered by WAEC Official Services</p>
               </div>
             </div>
-            {/* WAEC Logo Placeholder - User needs to provide the logo */}
+            {/* WAEC Logo */}
             <div className="flex items-center space-x-3">
-              <div className="w-16 h-16 bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                <span className="text-xs text-gray-500 text-center">WAEC<br/>Logo</span>
-              </div>
+              <img 
+                src="/lovable-uploads/312005bc-9615-463e-89bf-e6d4fc6d5e90.png" 
+                alt="WAEC Logo" 
+                className="w-16 h-16 object-contain"
+              />
               <div className="text-right">
                 <p className="text-sm font-semibold text-gray-700">Official Partner</p>
                 <p className="text-xs text-gray-500">West African Examinations Council</p>
