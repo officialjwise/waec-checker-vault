@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Phone, Mail, Calendar, Package, CreditCard, User } from 'lucide-react';
+import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,9 +16,17 @@ interface OrderDetailModalProps {
   order: OrderDetail | null;
   isOpen: boolean;
   onClose: () => void;
+  onStatusUpdate?: (orderId: string, status: string) => void;
+  updating?: string | null;
 }
 
-const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onClose }) => {
+const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ 
+  order, 
+  isOpen, 
+  onClose, 
+  onStatusUpdate,
+  updating 
+}) => {
   if (!order) return null;
 
   const getStatusColor = (status: string) => {
@@ -37,11 +45,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
   };
 
   const calculateTotal = (quantity: number, waecType: string) => {
+    if (order.amount) return order.amount;
     const prices = { BECE: 50, WASSCE: 75, NOVDEC: 60 };
     return quantity * (prices[waecType as keyof typeof prices] || 50);
   };
 
   const isPaid = order.payment_status === 'paid';
+
+  const handleStatusUpdate = (newStatus: string) => {
+    if (onStatusUpdate) {
+      onStatusUpdate(order.id, newStatus);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -81,6 +96,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                   ₵{calculateTotal(order.quantity, order.waec_type).toLocaleString()}
                 </p>
               </div>
+              {order.payment_reference && (
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-600">Payment Reference</p>
+                  <p className="font-medium text-blue-600">{order.payment_reference}</p>
+                </div>
+              )}
+              {order.transaction_id && (
+                <div className="col-span-2">
+                  <p className="text-sm text-gray-600">Transaction ID</p>
+                  <p className="font-medium text-purple-600">{order.transaction_id}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -115,9 +142,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                 <Calendar className="h-5 w-5 mr-2" />
                 Order Status
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-600">Status</p>
+                  <p className="text-sm text-gray-600">Current Status</p>
                   <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(order.status)}`}>
                     {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                   </span>
@@ -126,19 +153,56 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                   <p className="text-sm text-gray-600">Order Date</p>
                   <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-gray-600">Last Updated</p>
+                  <p className="font-medium">{new Date(order.updated_at).toLocaleDateString()}</p>
+                </div>
+                {onStatusUpdate && order.status !== 'completed' && (
+                  <div className="pt-2 space-y-2">
+                    <p className="text-sm text-gray-600">Update Status:</p>
+                    <div className="flex space-x-2">
+                      {order.status === 'pending' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleStatusUpdate('processing')}
+                          disabled={updating === order.id}
+                        >
+                          {updating === order.id ? 'Updating...' : 'Start Processing'}
+                        </Button>
+                      )}
+                      {(order.status === 'pending' || order.status === 'processing') && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleStatusUpdate('completed')}
+                          disabled={updating === order.id}
+                        >
+                          {updating === order.id ? 'Updating...' : 'Mark Complete'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
                 <CreditCard className="h-5 w-5 mr-2" />
-                Payment Status
+                Payment Information
               </h3>
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Payment</p>
-                <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getPaymentColor(isPaid)}`}>
-                  {isPaid ? 'Paid' : 'Unpaid'}
-                </span>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Payment Status</p>
+                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getPaymentColor(isPaid)}`}>
+                    {isPaid ? 'Paid' : 'Unpaid'}
+                  </span>
+                </div>
+                {order.payment_method && (
+                  <div>
+                    <p className="text-sm text-gray-600">Payment Method</p>
+                    <p className="font-medium">{order.payment_method}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -146,13 +210,22 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
           {/* Assigned Checkers */}
           {order.checkers && order.checkers.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">Assigned Checkers</h3>
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <Hash className="h-5 w-5 mr-2" />
+                Assigned Checkers ({order.checkers.length})
+              </h3>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {order.checkers.map((checker) => (
-                  <div key={checker.id} className="flex items-center justify-between bg-white p-2 rounded border">
-                    <div>
+                  <div key={checker.id} className="flex items-center justify-between bg-white p-3 rounded border">
+                    <div className="flex-1">
                       <p className="text-sm font-medium">Serial: {checker.serial}</p>
                       <p className="text-xs text-gray-500">PIN: {checker.pin}</p>
+                      {checker.assigned_at && (
+                        <p className="text-xs text-gray-400 flex items-center mt-1">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Assigned: {new Date(checker.assigned_at).toLocaleDateString()}
+                        </p>
+                      )}
                     </div>
                     <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
                       {checker.waec_type}
@@ -160,6 +233,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {order.notes && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">Additional Notes</h3>
+              <p className="text-sm text-gray-700">{order.notes}</p>
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, Phone, Mail } from 'lucide-react';
+import { Search, Filter, Eye, Phone, Mail, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import OrderDetailModal from '@/components/OrderDetailModal';
@@ -8,6 +9,7 @@ import { adminApi, Order, OrderDetail, OrderFilters } from '@/services/adminApi'
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterPaid, setFilterPaid] = useState('all');
@@ -26,7 +28,9 @@ const Orders = () => {
       console.log('Fetching orders with filters:', filters);
       const data = await adminApi.getOrders(filters);
       console.log('Orders fetched:', data);
-      setOrders(data);
+      // Validate and normalize order data
+      const validatedOrders = data.map(order => adminApi.validateOrderData(order));
+      setOrders(validatedOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
@@ -42,11 +46,6 @@ const Orders = () => {
   const applyFilters = () => {
     const filters: OrderFilters = {};
     
-    if (searchTerm) {
-      // The backend doesn't support text search in this format, so we'll filter client-side
-      // In a real app, you'd want backend text search support
-    }
-    
     if (filterType !== 'all') {
       filters.waec_type = filterType;
     }
@@ -54,13 +53,17 @@ const Orders = () => {
     if (filterStatus !== 'all') {
       filters.status = filterStatus;
     }
+
+    if (filterPaid !== 'all') {
+      filters.payment_status = filterPaid;
+    }
     
     fetchOrders(filters);
   };
 
   useEffect(() => {
     applyFilters();
-  }, [filterType, filterStatus]);
+  }, [filterType, filterStatus, filterPaid]);
 
   const filteredOrders = orders.filter(order => {
     if (!searchTerm) return true;
@@ -69,12 +72,9 @@ const Orders = () => {
     return (
       order.id.toLowerCase().includes(searchLower) ||
       order.phone.includes(searchTerm) ||
-      order.email.toLowerCase().includes(searchLower)
+      order.email.toLowerCase().includes(searchLower) ||
+      (order.payment_reference && order.payment_reference.toLowerCase().includes(searchLower))
     );
-  }).filter(order => {
-    if (filterPaid === 'all') return true;
-    return (filterPaid === 'paid' && order.payment_status === 'paid') ||
-           (filterPaid === 'unpaid' && order.payment_status === 'unpaid');
   });
 
   const getStatusBadge = (status: string) => {
@@ -103,9 +103,37 @@ const Orders = () => {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      setUpdating(orderId);
+      console.log('Updating order status:', orderId, newStatus);
+      await adminApi.updateOrderStatus(orderId, newStatus);
+      toast({
+        title: "Success",
+        description: "Order status updated successfully.",
+      });
+      // Refresh orders list
+      fetchOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
+  };
+
+  const calculateAmount = (quantity: number, waecType: string) => {
+    const prices = { BECE: 50, WASSCE: 75, NOVDEC: 60 };
+    return quantity * (prices[waecType as keyof typeof prices] || 50);
   };
 
   if (loading) {
@@ -124,7 +152,11 @@ const Orders = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
-        <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+          <Button variant="outline" size="sm" onClick={() => fetchOrders()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <span className="text-sm text-gray-500">
             Showing {filteredOrders.length} of {orders.length} orders
           </span>
@@ -139,7 +171,7 @@ const Orders = () => {
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by Order ID, phone, or email..."
+              placeholder="Search by Order ID, phone, email, or reference..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,6 +231,9 @@ const Orders = () => {
                   Quantity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -220,6 +255,9 @@ const Orders = () => {
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{order.id.slice(0, 8)}...</div>
+                    {order.payment_reference && (
+                      <div className="text-xs text-gray-500">Ref: {order.payment_reference.slice(0, 10)}...</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
@@ -228,6 +266,9 @@ const Orders = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {order.quantity}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ₵{(order.amount || calculateAmount(order.quantity, order.waec_type)).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
@@ -286,6 +327,8 @@ const Orders = () => {
         order={selectedOrder}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        onStatusUpdate={handleUpdateOrderStatus}
+        updating={updating}
       />
     </div>
   );
