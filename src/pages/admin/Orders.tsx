@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Eye, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import OrderDetailModal from '@/components/OrderDetailModal';
-import { adminApi, Order, OrderFilters } from '@/services/adminApi';
+import { adminApi, Order, OrderDetail, OrderFilters } from '@/services/adminApi';
 
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -13,7 +12,7 @@ const Orders = () => {
   const [filterType, setFilterType] = useState('all');
   const [filterPaid, setFilterPaid] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
