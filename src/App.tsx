@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Buy from "./pages/Buy";
 import BuyType from "./pages/BuyType";
@@ -12,8 +12,21 @@ import RetrieveVerify from "./pages/RetrieveVerify";
 import Success from "./pages/Success";
 import PaymentFailed from "./pages/PaymentFailed";
 import NotFound from "./pages/NotFound";
+import AdminLogin from "./pages/admin/AdminLogin";
+import Dashboard from "./pages/admin/Dashboard";
+import Orders from "./pages/admin/Orders";
+import Summary from "./pages/admin/Summary";
+import Logs from "./pages/admin/Logs";
+import Settings from "./pages/admin/Settings";
+import AdminLayout from "./components/AdminLayout";
 
 const queryClient = new QueryClient();
+
+// Protected Route Component
+const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
+  return isAuthenticated ? <>{children}</> : <Navigate to="/admin/login" replace />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -29,6 +42,21 @@ const App = () => (
           <Route path="/retrieve/verify" element={<RetrieveVerify />} />
           <Route path="/success" element={<Success />} />
           <Route path="/payment-failed" element={<PaymentFailed />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={
+            <ProtectedAdminRoute>
+              <AdminLayout />
+            </ProtectedAdminRoute>
+          }>
+            <Route index element={<Dashboard />} />
+            <Route path="orders" element={<Orders />} />
+            <Route path="summary" element={<Summary />} />
+            <Route path="logs" element={<Logs />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
