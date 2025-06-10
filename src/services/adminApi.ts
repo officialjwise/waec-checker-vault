@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 // Get the admin token from localStorage
@@ -96,139 +95,34 @@ export interface UploadResult {
 }
 
 class AdminApiService {
-  // Orders
-  async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.append(key, value);
-    });
-    
-    const url = `${BASE_URL}/admin/orders${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch orders: ${response.status}`);
-    }
-    
-    return response.json();
-  }
-
-  async getOrderDetail(orderId: string): Promise<OrderDetail> {
-    const response = await fetch(`${BASE_URL}/admin/orders/${orderId}`, {
-      headers: getAuthHeaders(),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order detail: ${response.status}`);
-    }
-    
-    return response.json();
-  }
-
-  // Checkers
-  async getCheckers(filters: CheckerFilters = {}): Promise<Checker[]> {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined) params.append(key, value.toString());
-    });
-    
-    const url = `${BASE_URL}/admin/checkers${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch checkers: ${response.status}`);
-    }
-    
-    return response.json();
-  }
-
-  async uploadCheckers(file: File): Promise<UploadResult> {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${BASE_URL}/admin/checkers`, {
+  // Admin Login - keeping this functionality
+  async login(email: string, password: string): Promise<{ access_token: string }> {
+    const response = await fetch(`${BASE_URL}/auth/admin/login`, {
       method: 'POST',
-      headers: getMultipartAuthHeaders(),
-      body: formData,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password })
     });
-    
+
     if (!response.ok) {
-      throw new Error(`Failed to upload checkers: ${response.status}`);
+      throw new Error(`Login failed: ${response.status}`);
     }
-    
+
     return response.json();
   }
 
-  async previewCheckers(file: File): Promise<any[]> {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    const response = await fetch(`${BASE_URL}/admin/checkers/preview`, {
-      method: 'POST',
-      headers: getMultipartAuthHeaders(),
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to preview checkers: ${response.status}`);
-    }
-    
-    return response.json();
+  // Logout functionality
+  async logout(): Promise<void> {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_authenticated');
   }
 
-  // OTP Requests
-  async getOtpRequests(filters: OtpFilters = {}): Promise<OtpRequest[]> {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined) params.append(key, value.toString());
-    });
-    
-    const url = `${BASE_URL}/admin/otp-requests${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch OTP requests: ${response.status}`);
-    }
-    
-    return response.json();
-  }
-
-  // Inventory
-  async getInventory(): Promise<InventoryItem[]> {
-    const response = await fetch(`${BASE_URL}/admin/inventory`, {
-      headers: getAuthHeaders(),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch inventory: ${response.status}`);
-    }
-    
-    return response.json();
-  }
-
-  // Logs
-  async getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.append(key, value);
-    });
-    
-    const url = `${BASE_URL}/admin/logs${params.toString() ? `?${params.toString()}` : ''}`;
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch logs: ${response.status}`);
-    }
-    
-    return response.json();
+  // Check if admin is authenticated
+  isAuthenticated(): boolean {
+    const token = localStorage.getItem('admin_token');
+    const authenticated = localStorage.getItem('admin_authenticated');
+    return !!(token && authenticated === 'true');
   }
 }
 
