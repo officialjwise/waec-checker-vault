@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -12,18 +13,57 @@ const AdminLogin = () => {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate login process
-    setTimeout(() => {
-      // Store auth token/session (replace with real auth)
+    try {
+      console.log('Attempting login with:', { email: formData.email });
+      
+      const response = await fetch('http://localhost:3000/api/auth/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      console.log('Login response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Login failed:', errorData);
+        throw new Error(`Login failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Login successful, received token');
+      
+      // Store the JWT token
+      localStorage.setItem('admin_token', data.access_token);
       localStorage.setItem('admin_authenticated', 'true');
-      setLoading(false);
+      
+      toast({
+        title: "Login Successful",
+        description: "Welcome to the admin panel",
+      });
+      
       navigate('/admin');
-    }, 1500);
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login Failed",
+        description: "Invalid email or password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -105,7 +145,7 @@ const AdminLogin = () => {
             {/* Submit Button */}
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || !formData.email || !formData.password}
               className="w-full py-3 text-base font-medium"
             >
               {loading ? 'Signing in...' : 'Sign In'}

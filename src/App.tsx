@@ -26,7 +26,14 @@ const queryClient = new QueryClient();
 // Protected Route Component
 const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
-  return isAuthenticated ? <>{children}</> : <Navigate to="/admin/login" replace />;
+  const hasToken = localStorage.getItem('admin_token');
+  
+  // Check if user has both authentication flag and valid token
+  if (!isAuthenticated || !hasToken) {
+    return <Navigate to="/admin/login" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 const App = () => (
