@@ -1,3 +1,4 @@
+
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 // Get the admin token from localStorage
@@ -123,6 +124,102 @@ class AdminApiService {
     const token = localStorage.getItem('admin_token');
     const authenticated = localStorage.getItem('admin_authenticated');
     return !!(token && authenticated === 'true');
+  }
+
+  // Orders API methods
+  async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
+    const queryParams = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) queryParams.append(key, value);
+    });
+
+    const response = await fetch(`${BASE_URL}/admin/orders?${queryParams}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch orders: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async getOrderDetail(orderId: string): Promise<OrderDetail> {
+    const response = await fetch(`${BASE_URL}/admin/orders/${orderId}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch order detail: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Checkers API methods
+  async previewCheckers(file: File): Promise<any[]> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${BASE_URL}/admin/checkers/preview`, {
+      method: 'POST',
+      headers: getMultipartAuthHeaders(),
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to preview checkers: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async uploadCheckers(file: File): Promise<UploadResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${BASE_URL}/admin/checkers/upload`, {
+      method: 'POST',
+      headers: getMultipartAuthHeaders(),
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload checkers: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Inventory API method
+  async getInventory(): Promise<InventoryItem[]> {
+    const response = await fetch(`${BASE_URL}/admin/inventory`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch inventory: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  // Logs API method
+  async getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
+    const queryParams = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) queryParams.append(key, value);
+    });
+
+    const response = await fetch(`${BASE_URL}/admin/logs?${queryParams}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch logs: ${response.status}`);
+    }
+
+    return response.json();
   }
 }
 
