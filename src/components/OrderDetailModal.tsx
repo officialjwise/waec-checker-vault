@@ -10,20 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-interface Order {
-  id: string;
-  waecType: string;
-  quantity: number;
-  phone: string;
-  email: string;
-  paid: boolean;
-  date: string;
-  status: 'pending' | 'completed' | 'processing';
-}
+import { OrderDetail } from '@/services/adminApi';
 
 interface OrderDetailModalProps {
-  order: Order | null;
+  order: OrderDetail | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -51,6 +41,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
     return quantity * (prices[waecType as keyof typeof prices] || 50);
   };
 
+  const isPaid = order.payment_status === 'paid';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -76,7 +68,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
               <div>
                 <p className="text-sm text-gray-600">WAEC Type</p>
                 <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                  {order.waecType}
+                  {order.waec_type}
                 </span>
               </div>
               <div>
@@ -86,7 +78,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
               <div>
                 <p className="text-sm text-gray-600">Total Amount</p>
                 <p className="font-medium text-green-600">
-                  ₵{calculateTotal(order.quantity, order.waecType).toLocaleString()}
+                  ₵{calculateTotal(order.quantity, order.waec_type).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -132,7 +124,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Order Date</p>
-                  <p className="font-medium">{new Date(order.date).toLocaleDateString()}</p>
+                  <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
             </div>
@@ -144,12 +136,32 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
               </h3>
               <div>
                 <p className="text-sm text-gray-600 mb-2">Payment</p>
-                <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getPaymentColor(order.paid)}`}>
-                  {order.paid ? 'Paid' : 'Unpaid'}
+                <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getPaymentColor(isPaid)}`}>
+                  {isPaid ? 'Paid' : 'Unpaid'}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Assigned Checkers */}
+          {order.checkers && order.checkers.length > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">Assigned Checkers</h3>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {order.checkers.map((checker) => (
+                  <div key={checker.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                    <div>
+                      <p className="text-sm font-medium">Serial: {checker.serial}</p>
+                      <p className="text-xs text-gray-500">PIN: {checker.pin}</p>
+                    </div>
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      {checker.waec_type}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
