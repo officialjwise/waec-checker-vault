@@ -1,12 +1,12 @@
-
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 // Get the admin token from localStorage
 const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
+  console.log('Getting auth headers, token exists:', !!token);
   return {
     'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
     'X-API-Key': token || '',
   };
 };
@@ -14,6 +14,7 @@ const getAuthHeaders = () => {
 const getMultipartAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   return {
+    'Authorization': token ? `Bearer ${token}` : '',
     'X-API-Key': token || '',
   };
 };
@@ -145,21 +146,41 @@ export interface AdminStats {
 }
 
 class AdminApiService {
-  // Admin Login - keeping this functionality
+  // Admin Login - updated with better error handling
   async login(email: string, password: string): Promise<{ access_token: string }> {
-    const response = await fetch(`${BASE_URL}/auth/admin/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password })
-    });
+    try {
+      console.log('Attempting login to:', `${BASE_URL}/auth/admin/login`);
+      console.log('Login payload:', { email, password: '***' });
+      
+      const response = await fetch(`${BASE_URL}/auth/admin/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        mode: 'cors',
+        body: JSON.stringify({ email, password })
+      });
 
-    if (!response.ok) {
-      throw new Error(`Login failed: ${response.status}`);
+      console.log('Login response status:', response.status);
+      console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Login failed with response:', errorText);
+        throw new Error(`Login failed: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('Login successful, received data:', { ...data, access_token: '***' });
+      return data;
+    } catch (error) {
+      console.error('Login error details:', error);
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Network error: Unable to connect to the server. Please check your internet connection and try again.');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   // Logout functionality
@@ -172,190 +193,259 @@ class AdminApiService {
   isAuthenticated(): boolean {
     const token = localStorage.getItem('admin_token');
     const authenticated = localStorage.getItem('admin_authenticated');
+    console.log('Checking authentication - token exists:', !!token, 'authenticated flag:', authenticated);
     return !!(token && authenticated === 'true');
   }
 
-  // Orders API methods
+  // Enhanced API call with better auth handling
+  private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+    const headers = getAuthHeaders();
+    console.log('Making authenticated request to:', url);
+    console.log('Request headers:', { ...headers, 'X-API-Key': headers['X-API-Key'] ? '***' : 'missing' });
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers,
+      },
+      mode: 'cors',
+    });
+
+    if (response.status === 401) {
+      console.error('Authentication failed - clearing stored credentials');
+      this.logout();
+      throw new Error('Authentication failed. Please log in again.');
+    }
+
+    return response;
+  }
+
+  // Orders API methods - updated with better error handling
   async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) queryParams.append(key, value.toString());
     });
 
-    const response = await fetch(`${BASE_URL}/admin/orders?${queryParams}`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders?${queryParams}`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch orders: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error in getOrders:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async getOrderDetail(orderId: string): Promise<OrderDetail> {
-    const response = await fetch(`${BASE_URL}/admin/orders/${orderId}`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders/${orderId}`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch order detail: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch order detail: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in getOrderDetail:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async updateOrderStatus(orderId: string, status: string): Promise<Order> {
-    const response = await fetch(`${BASE_URL}/admin/orders/${orderId}/status`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to update order status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to update order status: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in updateOrderStatus:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
-  // Checkers API methods
+  // Checkers API methods - updated with better error handling
   async getCheckers(filters: CheckerFilters = {}): Promise<Checker[]> {
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
 
-    const response = await fetch(`${BASE_URL}/admin/checkers?${queryParams}`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers?${queryParams}`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch checkers: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch checkers: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in getCheckers:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async previewCheckers(file: File): Promise<any[]> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${BASE_URL}/admin/checkers/preview`, {
-      method: 'POST',
-      headers: getMultipartAuthHeaders(),
-      body: formData,
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/preview`, {
+        method: 'POST',
+        headers: getMultipartAuthHeaders(),
+        body: formData,
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to preview checkers: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to preview checkers: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in previewCheckers:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async uploadCheckers(file: File): Promise<UploadResult> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${BASE_URL}/admin/checkers/upload`, {
-      method: 'POST',
-      headers: getMultipartAuthHeaders(),
-      body: formData,
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/upload`, {
+        method: 'POST',
+        headers: getMultipartAuthHeaders(),
+        body: formData,
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to upload checkers: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to upload checkers: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in uploadCheckers:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async deleteChecker(checkerId: string): Promise<void> {
-    const response = await fetch(`${BASE_URL}/admin/checkers/${checkerId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/${checkerId}`, {
+        method: 'DELETE',
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to delete checker: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to delete checker: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error in deleteChecker:', error);
+      throw error;
     }
   }
 
   async bulkDeleteCheckers(checkerIds: string[]): Promise<{ deleted: number }> {
-    const response = await fetch(`${BASE_URL}/admin/checkers/bulk-delete`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ checker_ids: checkerIds }),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/bulk-delete`, {
+        method: 'POST',
+        body: JSON.stringify({ checker_ids: checkerIds }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to bulk delete checkers: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to bulk delete checkers: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in bulkDeleteCheckers:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
-  // OTP Requests API methods
+  // OTP Requests API methods - updated with better error handling
   async getOtpRequests(filters: OtpFilters = {}): Promise<OtpRequest[]> {
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
 
-    const response = await fetch(`${BASE_URL}/admin/otp-requests?${queryParams}`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/otp-requests?${queryParams}`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch OTP requests: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch OTP requests: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in getOtpRequests:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
-  // Inventory API method
+  // Inventory API method - updated with better error handling
   async getInventory(): Promise<InventoryItem[]> {
-    const response = await fetch(`${BASE_URL}/admin/inventory`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/inventory`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch inventory: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch inventory: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in getInventory:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
-  // Admin Stats API method
+  // Admin Stats API method - updated with better error handling
   async getAdminStats(): Promise<AdminStats> {
-    const response = await fetch(`${BASE_URL}/admin/stats`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/stats`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch admin stats: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch admin stats: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in getAdminStats:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
-  // Logs API method
+  // Logs API method - updated with better error handling
   async getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
 
-    const response = await fetch(`${BASE_URL}/admin/logs?${queryParams}`, {
-      headers: getAuthHeaders(),
-    });
+    try {
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/logs?${queryParams}`);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch logs: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch logs: ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Error in getLogs:', error);
+      throw error;
     }
-
-    return response.json();
   }
 
   // Utility methods for data validation
@@ -391,4 +481,3 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
-

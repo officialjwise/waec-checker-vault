@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { adminApi } from '@/services/adminApi';
 
 const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -22,27 +22,9 @@ const AdminLogin = () => {
     try {
       console.log('Attempting login with:', { email: formData.email });
       
-      const response = await fetch('https://waec-backend.onrender.com/api/auth/admin/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
-      });
-
-      console.log('Login response status:', response.status);
+      const data = await adminApi.login(formData.email, formData.password);
       
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Login failed:', errorData);
-        throw new Error(`Login failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('Login successful, received token');
+      console.log('Login successful, storing credentials');
       
       // Store the JWT token
       localStorage.setItem('admin_token', data.access_token);
@@ -56,9 +38,24 @@ const AdminLogin = () => {
       navigate('/admin');
     } catch (error) {
       console.error('Login error:', error);
+      
+      let errorMessage = "Invalid email or password. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Network error')) {
+          errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
+        } else if (error.message.includes('401')) {
+          errorMessage = "Invalid email or password. Please try again.";
+        } else if (error.message.includes('500')) {
+          errorMessage = "Server error. Please try again later.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

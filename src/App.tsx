@@ -20,16 +20,19 @@ import Logs from "./pages/admin/Logs";
 import Settings from "./pages/admin/Settings";
 import UploadCheckers from "./pages/admin/UploadCheckers";
 import AdminLayout from "./components/AdminLayout";
+import { adminApi } from "./services/adminApi";
 
 const queryClient = new QueryClient();
 
 // Protected Route Component
 const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = localStorage.getItem('admin_authenticated') === 'true';
-  const hasToken = localStorage.getItem('admin_token');
+  const isAuthenticated = adminApi.isAuthenticated();
+  
+  console.log('ProtectedAdminRoute - isAuthenticated:', isAuthenticated);
   
   // Check if user has both authentication flag and valid token
-  if (!isAuthenticated || !hasToken) {
+  if (!isAuthenticated) {
+    console.log('User not authenticated, redirecting to login');
     return <Navigate to="/admin/login" replace />;
   }
   
