@@ -22,7 +22,7 @@ const AdminLogin = () => {
     try {
       console.log('Attempting login with:', { email: formData.email });
       
-      const response = await fetch('http://localhost:3000/api/auth/admin/login', {
+      const response = await fetch('https://waec-backend.onrender.com/api/auth/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
