@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 // Get the admin token from localStorage
@@ -7,6 +6,15 @@ const getAuthHeaders = () => {
   return {
     'Content-Type': 'application/json',
     'X-API-Key': token || '',
+  };
+};
+
+// Get user token from localStorage (for non-admin endpoints)
+const getUserAuthHeaders = () => {
+  const token = localStorage.getItem('user_token');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
   };
 };
 
@@ -63,6 +71,62 @@ export interface LogEntry {
   admin_id: string;
   details: any;
   created_at: string;
+}
+
+// New interfaces for additional endpoints
+export interface CheckerAvailability {
+  waec_type: string;
+  available: number;
+  price?: number;
+  details?: Checker[];
+}
+
+export interface CheckerSummary {
+  total_purchased: number;
+  by_type: {
+    [key: string]: number;
+  };
+  recent_purchases: Order[];
+}
+
+export interface OrderInitiateRequest {
+  phone: string;
+  email: string;
+  waec_type: string;
+  quantity: number;
+}
+
+export interface OrderInitiateResponse {
+  order_id: string;
+  payment_url: string;
+  reference: string;
+}
+
+export interface OrderVerifyResponse {
+  success: boolean;
+  order: OrderDetail;
+  message?: string;
+}
+
+export interface OtpInitiateRequest {
+  phone: string;
+}
+
+export interface OtpInitiateResponse {
+  success: boolean;
+  request_id: string;
+  message: string;
+}
+
+export interface OtpVerifyRequest {
+  requestId: string;
+  otp: string;
+}
+
+export interface OtpVerifyResponse {
+  success: boolean;
+  checkers?: Checker[];
+  message: string;
 }
 
 export interface OrderFilters {
@@ -175,6 +239,101 @@ class AdminApiService {
     
     if (!response.ok) {
       throw new Error(`Failed to preview checkers: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  // New Checker Public Methods
+  async getCheckerAvailability(waecType?: string, limit?: number, detailed?: boolean): Promise<CheckerAvailability[]> {
+    const params = new URLSearchParams();
+    if (waecType) params.append('waec_type', waecType);
+    if (limit) params.append('limit', limit.toString());
+    if (detailed) params.append('detailed', 'true');
+    
+    const url = `${BASE_URL}/checkers/availability${params.toString() ? `?${params.toString()}` : ''}`;
+    const headers = detailed ? getUserAuthHeaders() : { 'Content-Type': 'application/json' };
+    
+    const response = await fetch(url, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch checker availability: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  async getCheckerSummary(): Promise<CheckerSummary> {
+    const response = await fetch(`${BASE_URL}/checkers/summary`, {
+      headers: getUserAuthHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch checker summary: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  // Order Public Methods
+  async initiateOrder(orderData: OrderInitiateRequest): Promise<OrderInitiateResponse> {
+    const response = await fetch(`${BASE_URL}/orders/initiate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to initiate order: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  async verifyOrder(reference: string): Promise<OrderVerifyResponse> {
+    const response = await fetch(`${BASE_URL}/orders/verify/${reference}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to verify order: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  // OTP Methods
+  async initiateOtp(phone: string): Promise<OtpInitiateResponse> {
+    const response = await fetch(`${BASE_URL}/retrieve/initiate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ phone }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to initiate OTP: ${response.status}`);
+    }
+    
+    return response.json();
+  }
+
+  async verifyOtp(requestId: string, otp: string): Promise<OtpVerifyResponse> {
+    const response = await fetch(`${BASE_URL}/retrieve/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requestId, otp }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to verify OTP: ${response.status}`);
     }
     
     return response.json();
