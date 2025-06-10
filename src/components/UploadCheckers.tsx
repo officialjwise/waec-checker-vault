@@ -2,59 +2,80 @@
 import React, { useState } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface UploadResult {
-  inserted: number;
-  skipped: number;
-  errors: string[];
-}
+import { useToast } from '@/hooks/use-toast';
+import { adminApi, UploadResult } from '@/services/adminApi';
 
 const UploadCheckers = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const { toast } = useToast();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.type === 'text/csv') {
       setSelectedFile(file);
       setUploadResult(null);
-      
-      // Parse CSV for preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        const lines = text.split('\n').filter(line => line.trim());
-        const headers = lines[0].split(',').map(h => h.trim());
-        const data = lines.slice(1, 6).map(line => {
-          const values = line.split(',').map(v => v.trim());
-          return headers.reduce((obj: any, header, index) => {
-            obj[header] = values[index];
-            return obj;
-          }, {});
-        });
-        setPreviewData(data);
-      };
-      reader.readAsText(file);
+      setPreviewData([]);
+      handlePreview(file);
+    } else {
+      toast({
+        title: "Invalid File",
+        description: "Please select a valid CSV file.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePreview = async (file: File) => {
+    try {
+      setPreviewing(true);
+      console.log('Previewing CSV file:', file.name);
+      const data = await adminApi.previewCheckers(file);
+      console.log('Preview data:', data);
+      setPreviewData(data.slice(0, 5)); // Show first 5 rows
+      toast({
+        title: "Preview Generated",
+        description: `Loaded ${data.length} rows from CSV file.`,
+      });
+    } catch (error) {
+      console.error('Error previewing file:', error);
+      toast({
+        title: "Preview Failed",
+        description: "Failed to preview CSV file. Please check the format.",
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewing(false);
     }
   };
 
   const handleUpload = async () => {
     if (!selectedFile) return;
     
-    setUploading(true);
-    
-    // Simulate upload process
-    setTimeout(() => {
-      const mockResult: UploadResult = {
-        inserted: Math.floor(Math.random() * 400) + 100,
-        skipped: Math.floor(Math.random() * 50),
-        errors: Math.random() > 0.7 ? ['Row 15: Invalid PIN format', 'Row 23: Missing WAEC type'] : []
-      };
-      setUploadResult(mockResult);
+    try {
+      setUploading(true);
+      console.log('Uploading CSV file:', selectedFile.name);
+      const result = await adminApi.uploadCheckers(selectedFile);
+      console.log('Upload result:', result);
+      setUploadResult(result);
+      
+      toast({
+        title: "Upload Successful",
+        description: `Inserted ${result.inserted} checkers, skipped ${result.skipped}.`,
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload checkers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setUploading(false);
-    }, 2000);
+    }
   };
 
   const clearFile = () => {
@@ -115,8 +136,16 @@ const UploadCheckers = () => {
               </Button>
             </div>
 
+            {/* Preview Loading */}
+            {previewing && (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-500">Generating preview...</p>
+              </div>
+            )}
+
             {/* Preview */}
-            {previewData.length > 0 && (
+            {previewData.length > 0 && !previewing && (
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Preview (first 5 rows)</h3>
                 <div className="overflow-x-auto">
@@ -143,15 +172,17 @@ const UploadCheckers = () => {
             )}
 
             {/* Upload Button */}
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleUpload} 
-                disabled={uploading}
-                className="min-w-[120px]"
-              >
-                {uploading ? 'Uploading...' : 'Upload to Database'}
-              </Button>
-            </div>
+            {previewData.length > 0 && !previewing && (
+              <div className="flex justify-end">
+                <Button 
+                  onClick={handleUpload} 
+                  disabled={uploading}
+                  className="min-w-[120px]"
+                >
+                  {uploading ? 'Uploading...' : 'Upload to Database'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
