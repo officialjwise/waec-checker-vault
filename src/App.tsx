@@ -18,6 +18,7 @@ import Orders from "./pages/admin/Orders";
 import Summary from "./pages/admin/Summary";
 import Logs from "./pages/admin/Logs";
 import Settings from "./pages/admin/Settings";
+import UploadCheckers from "./pages/admin/UploadCheckers";
 import AdminLayout from "./components/AdminLayout";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
             </ProtectedAdminRoute>
           }>
             <Route index element={<Dashboard />} />
+            <Route path="upload-checkers" element={<UploadCheckers />} />
             <Route path="orders" element={<Orders />} />
             <Route path="summary" element={<Summary />} />
             <Route path="logs" element={<Logs />} />
