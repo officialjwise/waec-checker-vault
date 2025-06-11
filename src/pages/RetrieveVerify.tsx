@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,9 +91,10 @@ const RetrieveVerify = () => {
     setIsLoading(true);
     
     try {
+      // Use the phone number as received from URL params (without adding leading 0)
       const fullPhoneNumber = phoneNumber?.startsWith('0') 
-        ? `+233${phoneNumber.substring(1)}` 
-        : `+233${phoneNumber}`;
+        ? phoneNumber 
+        : `0${phoneNumber}`;
       
       console.log('Verifying OTP with data:', {
         phone: fullPhoneNumber,
@@ -154,9 +154,10 @@ const RetrieveVerify = () => {
     setResendTimer(60);
     
     try {
+      // Use the phone number as received from URL params (without adding leading 0)
       const fullPhoneNumber = phoneNumber?.startsWith('0') 
-        ? `+233${phoneNumber.substring(1)}` 
-        : `+233${phoneNumber}`;
+        ? phoneNumber 
+        : `0${phoneNumber}`;
       
       console.log('Resending OTP for phone:', fullPhoneNumber);
       

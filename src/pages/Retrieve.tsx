@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,12 +82,11 @@ const Retrieve = () => {
       });
       
       // Navigate to verify page with phone number and response data
-      const localNumber = country === "ghana" 
-        ? (phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber)
-        : (phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber);
+      // Send the clean phone number without leading 0
+      const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
       
       const queryParams = new URLSearchParams({
-        phone: `0${localNumber}`,
+        phone: cleanNumber, // Don't add leading 0
         ...(response.requestId && { requestId: response.requestId }),
         ...(response.prefix && { prefix: response.prefix })
       });

@@ -1,3 +1,4 @@
+
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 export interface CheckerAvailability {
@@ -230,8 +231,10 @@ class ClientApiService {
   // Initiate retrieve process with OTP
   async initiateRetrieve(phoneNumber: string): Promise<RetrieveInitiateResponse> {
     try {
-      // Format phone number to international format without +
-      const formattedPhone = this.formatPhoneNumber(phoneNumber, 'ghana').replace('+', '');
+      // Format phone number to backend expected format (e.g., "233543482189")
+      const formattedPhone = this.formatPhoneNumberForBackend(phoneNumber);
+      
+      console.log('Initiating retrieve with formatted phone:', formattedPhone);
       
       const response = await fetch(`${BASE_URL}/retrieve/initiate`, {
         method: 'POST',
@@ -296,8 +299,10 @@ class ClientApiService {
   // Verify OTP and get checkers
   async verifyRetrieveOtp(phoneNumber: string, otp: string, requestId: string, prefix: string): Promise<RetrieveVerifyResponse> {
     try {
-      // Format phone number to international format without +
-      const formattedPhone = this.formatPhoneNumber(phoneNumber, 'ghana').replace('+', '');
+      // Format phone number to backend expected format (e.g., "233543482189")
+      const formattedPhone = this.formatPhoneNumberForBackend(phoneNumber);
+      
+      console.log('Verifying OTP with formatted phone:', formattedPhone);
       
       const response = await fetch(`${BASE_URL}/retrieve/verify`, {
         method: 'POST',
@@ -362,7 +367,21 @@ class ClientApiService {
     }
   }
 
-  // Helper method to format phone number to international format
+  // Helper method to format phone number for backend (without + or leading 0)
+  formatPhoneNumberForBackend(phone: string): string {
+    const cleanPhone = phone.replace(/[\s-+]/g, '');
+    
+    // Handle Ghana numbers
+    if (cleanPhone.startsWith('233')) {
+      return cleanPhone; // Already in correct format
+    } else if (cleanPhone.startsWith('0')) {
+      return `233${cleanPhone.substring(1)}`; // Remove leading 0 and add 233
+    } else {
+      return `233${cleanPhone}`; // Add 233 prefix
+    }
+  }
+
+  // Helper method to format phone number to international format (kept for other uses)
   formatPhoneNumber(phone: string, countryCode: string): string {
     const cleanPhone = phone.replace(/[\s-]/g, '');
     
