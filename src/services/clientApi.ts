@@ -1,3 +1,4 @@
+
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 export interface CheckerAvailability {
@@ -207,7 +208,10 @@ class ClientApiService {
         throw new Error(`Failed to verify payment: ${response.status} - ${errorMessage}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      // Log the verification result but don't log sensitive checker data
+      console.log('Payment verification successful for order:', result.order_id);
+      return result;
     } catch (error) {
       console.error('Error verifying payment:', error);
       throw error;

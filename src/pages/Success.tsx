@@ -38,15 +38,20 @@ const Success = () => {
 
   // Process URL parameters on mount and verify payment
   useEffect(() => {
-    const reference = searchParams.get("reference") || searchParams.get("trxref");
+    // Get all reference values and prioritize the trxref (Paystack reference)
+    const trxref = searchParams.get("trxref");
+    const reference = searchParams.get("reference");
     const status = searchParams.get("status");
     const backendOrderId = searchParams.get("order_id");
     
-    console.log("URL parameters:", { reference, status, backendOrderId });
+    console.log("URL parameters:", { trxref, reference, status, backendOrderId });
     
-    if (reference && (status === "success" || status === "successful")) {
-      console.log("Found Paystack callback parameters, verifying payment...");
-      verifyPayment(reference);
+    // Use trxref as the primary reference (Paystack's actual transaction reference)
+    const paymentReference = trxref || reference;
+    
+    if (paymentReference && (status === "success" || status === "successful")) {
+      console.log("Found payment callback parameters, verifying payment with reference:", paymentReference);
+      verifyPayment(paymentReference);
     } else if (backendOrderId && status === "success") {
       console.log("Found backend success parameters");
       // Handle direct success from backend redirect
