@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
 import AdminCharts from '@/components/AdminCharts';
@@ -23,21 +22,21 @@ const Summary = () => {
       setLoading(true);
       console.log('Fetching summary data...');
       
-      // First get all orders, then filter for paid ones to ensure we get the right data
+      // Get all orders and inventory data
       const [inventoryData, allOrdersData] = await Promise.all([
         adminApi.getInventory(),
-        adminApi.getOrders({}) // Get all orders first
+        adminApi.getOrders({}) // Get all orders
       ]);
       
       console.log('Summary data fetched:', inventoryData);
       console.log('All orders fetched:', allOrdersData);
       
-      // Filter for paid orders manually to ensure we have the right data
+      // Filter for paid orders - only check status since payment_status doesn't exist
       const paidOrdersFiltered = allOrdersData.filter(order => 
-        order.status === 'paid' || order.payment_status === 'paid'
+        order.status === 'paid'
       );
       
-      console.log('Filtered paid orders:', paidOrdersFiltered);
+      console.log('Filtered paid orders (status === paid):', paidOrdersFiltered);
       console.log('Number of paid orders after filtering:', paidOrdersFiltered.length);
       console.log('Sample paid orders structure:', paidOrdersFiltered.slice(0, 3));
       
@@ -98,23 +97,17 @@ const Summary = () => {
     return price;
   };
 
-  // Calculate revenue for an order - prioritize order.amount, fallback to quantity * price
+  // Calculate revenue for an order - since amount field doesn't exist, always use quantity * price
   const calculateOrderRevenue = (order: Order) => {
     console.log(`Calculating revenue for order ${order.id}:`, {
-      amount: order.amount,
       quantity: order.quantity,
       waec_type: order.waec_type,
       status: order.status,
-      payment_status: order.payment_status
+      hasAmount: 'amount' in order,
+      amount: order.amount
     });
     
-    // Try order.amount first
-    if (order.amount !== undefined && order.amount !== null && order.amount > 0) {
-      console.log(`Using order.amount: ${order.amount}`);
-      return Number(order.amount);
-    }
-    
-    // Fallback to calculated amount
+    // Since the orders don't have amount field, calculate from quantity * price
     const price = getPrice(order.waec_type);
     const quantity = Number(order.quantity) || 0;
     const calculatedRevenue = quantity * price;
@@ -139,9 +132,9 @@ const Summary = () => {
   console.log('Number of paid orders processed:', paidOrders.length);
   console.log('Revenue breakdown by order:', paidOrders.map(order => ({
     id: order.id,
-    amount: order.amount,
     quantity: order.quantity,
     waec_type: order.waec_type,
+    status: order.status,
     calculated: calculateOrderRevenue(order)
   })));
   console.log('===================================');
