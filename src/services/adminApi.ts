@@ -1,3 +1,4 @@
+
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
@@ -5,6 +6,8 @@ const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7
 const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   console.log('Getting auth headers, token exists:', !!token);
+  console.log('Full token value:', token ? token.substring(0, 50) + '...' : 'null');
+  console.log('API Key being used:', ADMIN_API_KEY ? ADMIN_API_KEY.substring(0, 10) + '...' : 'missing');
   return {
     'Content-Type': 'application/json',
     'X-API-Key': ADMIN_API_KEY,
@@ -186,6 +189,7 @@ class AdminApiService {
 
   // Logout functionality
   async logout(): Promise<void> {
+    console.log('Logging out - clearing credentials');
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_authenticated');
   }
@@ -202,25 +206,38 @@ class AdminApiService {
   private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = getAuthHeaders();
     console.log('Making authenticated request to:', url);
-    console.log('Request headers:', { 
+    console.log('Request headers being sent:', { 
       'Content-Type': headers['Content-Type'],
-      'X-API-Key': headers['X-API-Key'] ? '***' : 'missing',
-      'Authorization': headers['Authorization'] ? '***' : 'missing'
+      'X-API-Key': headers['X-API-Key'] ? headers['X-API-Key'].substring(0, 10) + '...' : 'missing',
+      'Authorization': headers['Authorization'] ? headers['Authorization'].substring(0, 20) + '...' : 'missing'
     });
+    
+    // Log the exact headers that will be sent
+    const finalHeaders = {
+      ...headers,
+      ...options.headers,
+    };
+    console.log('Final headers object:', finalHeaders);
     
     const response = await fetch(url, {
       ...options,
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
+      headers: finalHeaders,
       mode: 'cors',
     });
 
     console.log('Response status:', response.status);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
+    // If we get a 401, let's see what the response body says before clearing credentials
     if (response.status === 401) {
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+        console.error('401 response body:', errorBody);
+      } catch (e) {
+        console.error('Could not read 401 response body:', e);
+      }
+      
       console.error('Authentication failed - clearing stored credentials');
       this.logout();
       throw new Error('Authentication failed. Please log in again.');
