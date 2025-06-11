@@ -295,6 +295,7 @@ class AdminApiService {
     if (cached) return cached;
 
     try {
+      console.log('Fetching order detail from:', `${BASE_URL}/admin/orders/${orderId}`);
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders/${orderId}`);
 
       if (!response.ok) {
@@ -302,6 +303,7 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
+      console.log('Order detail response:', responseData);
       
       // Handle the nested response structure
       let orderData;
@@ -324,9 +326,25 @@ class AdminApiService {
         orderData.checkers = [];
       }
       
+      // Validate that checkers have all required fields including PIN
+      if (orderData.checkers && Array.isArray(orderData.checkers)) {
+        orderData.checkers = orderData.checkers.map((checker: any) => ({
+          id: checker.id || '',
+          serial: checker.serial || '',
+          pin: checker.pin || '', // Ensure PIN is included
+          waec_type: checker.waec_type || 'WASSCE',
+          assigned: checker.assigned || false,
+          order_id: checker.order_id,
+          assigned_at: checker.assigned_at,
+          created_at: checker.created_at || new Date().toISOString(),
+          updated_at: checker.updated_at,
+        }));
+      }
+      
       setCachedData(cacheKey, orderData, CACHE_TTL.orders);
       return orderData;
     } catch (error) {
+      console.error('Error fetching order detail:', error);
       throw error;
     }
   }
@@ -386,34 +404,59 @@ class AdminApiService {
 
   async uploadCheckers(file: File): Promise<UploadResult> {
     try {
+      console.log('Uploading checkers file:', file.name);
       const formData = new FormData();
       formData.append('file', file);
       
       const token = localStorage.getItem('admin_token');
       
-      const response = await fetch(`${BASE_URL}/admin/checkers/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-          'X-API-Key': API_KEY,
-          // Don't set Content-Type - let browser handle multipart boundary
-        },
-        mode: 'cors',
-        body: formData,
-      });
+      // Try multiple possible endpoints
+      const endpoints = [
+        `${BASE_URL}/admin/checkers/upload`,
+        `${BASE_URL}/admin/upload-checkers`,
+        `${BASE_URL}/checkers/upload`,
+        `${BASE_URL}/upload/checkers`
+      ];
+      
+      let lastError = null;
+      
+      for (const endpoint of endpoints) {
+        try {
+          console.log('Trying upload endpoint:', endpoint);
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : '',
+              'X-API-Key': API_KEY,
+              // Don't set Content-Type - let browser handle multipart boundary
+            },
+            mode: 'cors',
+            body: formData,
+          });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to upload checkers: ${response.status} - ${errorText}`);
+          if (response.ok) {
+            console.log('Upload successful with endpoint:', endpoint);
+            clearCache('checkers');
+            clearCache('inventory');
+            clearCache('stats');
+
+            const result = await response.json();
+            return result;
+          } else {
+            const errorText = await response.text();
+            console.log(`Endpoint ${endpoint} failed with status ${response.status}:`, errorText);
+            lastError = new Error(`${response.status} - ${errorText}`);
+          }
+        } catch (error) {
+          console.log(`Endpoint ${endpoint} failed:`, error);
+          lastError = error;
+        }
       }
-
-      clearCache('checkers');
-      clearCache('inventory');
-      clearCache('stats');
-
-      const result = await response.json();
-      return result;
+      
+      // If all endpoints failed, throw the last error
+      throw new Error(`Failed to upload checkers. All endpoints failed. Last error: ${lastError?.message || 'Unknown error'}`);
     } catch (error) {
+      console.error('Error uploading file:', error);
       throw error;
     }
   }
@@ -599,3 +642,5 @@ class AdminApiService {
 export const adminApi = new AdminApiService();
 
 export default adminApi;
+
+}
