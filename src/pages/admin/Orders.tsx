@@ -23,10 +23,15 @@ const Orders = () => {
     fetchOrders();
   }, [currentPage]);
 
-  const fetchOrders = async (filters: OrderFilters = {}) => {
+  const fetchOrders = async (filters: OrderFilters = {}, useCache: boolean = true) => {
     try {
       setLoading(true);
       console.log('Fetching orders with filters:', filters);
+      
+      // Clear cache if explicitly requested (refresh button)
+      if (!useCache) {
+        adminApi.clearCache();
+      }
       
       const paginatedFilters = {
         ...filters,
@@ -140,6 +145,14 @@ const Orders = () => {
     setCurrentPage(page);
   };
 
+  const handleRefresh = () => {
+    fetchOrders({}, false); // Force refresh without cache
+    toast({
+      title: "Refreshed",
+      description: "Data has been refreshed from the server.",
+    });
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -161,7 +174,7 @@ const Orders = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
         <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-          <Button variant="outline" size="sm" onClick={() => fetchOrders()}>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
