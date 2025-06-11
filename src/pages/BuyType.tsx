@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Shield, CheckCircle, X, CreditCard } from "lucide-react";
+import { AlertCircle, Loader2, Shield, CheckCircle, X, CreditCard, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { clientApi } from "@/services/clientApi";
@@ -22,7 +22,8 @@ const BuyType = () => {
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("ghana");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [availabilityStatus, setAvailabilityStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
+  const [availabilityStatus, setAvailabilityStatus] = useState<'checking' | 'available' | 'unavailable' | 'network-error'>('checking');
+  const [errorMessage, setErrorMessage] = useState<string>("");
   
   const countries = {
     ghana: { name: "Ghana", code: "+233", flag: "🇬🇭" },
@@ -46,12 +47,25 @@ const BuyType = () => {
   // Check availability on component mount
   useEffect(() => {
     const checkAvailability = async () => {
+      console.log('Starting availability check for:', waecType);
+      
       try {
         const waecTypeFormatted = clientApi.mapWaecType(waecType || '');
-        const availabilityResult = await clientApi.checkAvailability(waecTypeFormatted);
-        setAvailabilityStatus(availabilityResult.available ? 'available' : 'unavailable');
+        console.log('Formatted WAEC type:', waecTypeFormatted);
+        console.log('Making API call to check availability...');
         
-        if (!availabilityResult.available) {
+        const availabilityResult = await clientApi.checkAvailability(waecTypeFormatted);
+        console.log('Availability check result:', availabilityResult);
+        
+        if (availabilityResult.available) {
+          setAvailabilityStatus('available');
+          setErrorMessage("");
+          console.log('Service is available');
+        } else {
+          setAvailabilityStatus('unavailable');
+          setErrorMessage(availabilityResult.message || `${examTypeNames[waecType]} checkers are currently not available. Please try again later.`);
+          console.log('Service unavailable:', availabilityResult.message);
+          
           toast({
             title: "Service Temporarily Unavailable",
             description: availabilityResult.message || `${examTypeNames[waecType]} checkers are currently not available. Please try again later.`,
@@ -59,13 +73,32 @@ const BuyType = () => {
           });
         }
       } catch (error) {
-        console.error('Error checking availability:', error);
-        setAvailabilityStatus('unavailable');
-        toast({
-          title: "Connection Error",
-          description: "Unable to check service availability. Please check your connection and try again.",
-          variant: "destructive"
-        });
+        console.error('Network error during availability check:', error);
+        console.log('Error type:', error?.constructor?.name);
+        console.log('Error message:', error?.message);
+        
+        // Handle network errors differently from service unavailability
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          setAvailabilityStatus('network-error');
+          setErrorMessage("Unable to connect to the service. Please check your internet connection and try again.");
+          console.log('Network connectivity issue detected');
+          
+          toast({
+            title: "Connection Error",
+            description: "Unable to connect to our servers. Please check your internet connection and try again.",
+            variant: "destructive"
+          });
+        } else {
+          setAvailabilityStatus('unavailable');
+          setErrorMessage("Service temporarily unavailable. Please try again later.");
+          console.log('Other error occurred:', error);
+          
+          toast({
+            title: "Service Error",
+            description: "Unable to check service availability. Please try again later.",
+            variant: "destructive"
+          });
+        }
       }
     };
 
@@ -115,8 +148,46 @@ const BuyType = () => {
     return emailRegex.test(email);
   };
 
+  const retryAvailabilityCheck = async () => {
+    setAvailabilityStatus('checking');
+    setErrorMessage("");
+    
+    // Re-run the availability check
+    try {
+      const waecTypeFormatted = clientApi.mapWaecType(waecType || '');
+      console.log('Retrying availability check...');
+      
+      const availabilityResult = await clientApi.checkAvailability(waecTypeFormatted);
+      console.log('Retry result:', availabilityResult);
+      
+      if (availabilityResult.available) {
+        setAvailabilityStatus('available');
+        setErrorMessage("");
+        toast({
+          title: "Connection Restored",
+          description: "Service is now available!",
+        });
+      } else {
+        setAvailabilityStatus('unavailable');
+        setErrorMessage(availabilityResult.message || `${examTypeNames[waecType]} checkers are currently not available.`);
+      }
+    } catch (error) {
+      console.error('Retry failed:', error);
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        setAvailabilityStatus('network-error');
+        setErrorMessage("Still unable to connect. Please check your internet connection.");
+      } else {
+        setAvailabilityStatus('unavailable');
+        setErrorMessage("Service temporarily unavailable.");
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log('Form submission started');
+    console.log('Current availability status:', availabilityStatus);
     
     if (!phoneNumber.trim()) {
       toast({
@@ -145,10 +216,10 @@ const BuyType = () => {
       return;
     }
 
-    if (availabilityStatus === 'unavailable') {
+    if (availabilityStatus === 'unavailable' || availabilityStatus === 'network-error') {
       toast({
         title: "Service Unavailable",
-        description: "Checkers are currently not available. Please try again later.",
+        description: "Please wait for service to become available or check your connection.",
         variant: "destructive"
       });
       return;
@@ -245,11 +316,40 @@ const BuyType = () => {
             </Alert>
           )}
 
+          {availabilityStatus === 'network-error' && (
+            <Alert className="mb-6 bg-orange-50 border-orange-200">
+              <Wifi className="h-4 w-4 text-orange-600" />
+              <AlertDescription className="text-orange-800">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{errorMessage}</span>
+                  <Button 
+                    onClick={retryAvailabilityCheck}
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-4 border-orange-300 text-orange-700 hover:bg-orange-100"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {availabilityStatus === 'unavailable' && (
             <Alert className="mb-6 bg-red-50 border-red-200">
               <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800 font-medium">
-                {examTypeNames[waecType]} checkers are currently unavailable. Please try again later.
+              <AlertDescription className="text-red-800">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{errorMessage}</span>
+                  <Button 
+                    onClick={retryAvailabilityCheck}
+                    variant="outline" 
+                    size="sm" 
+                    className="ml-4 border-red-300 text-red-700 hover:bg-red-100"
+                  >
+                    Retry
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -405,7 +505,7 @@ const BuyType = () => {
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                    disabled={isProcessing || availabilityStatus === 'unavailable'}
+                    disabled={isProcessing || availabilityStatus === 'unavailable' || availabilityStatus === 'network-error'}
                   >
                     {isProcessing ? (
                       <>
