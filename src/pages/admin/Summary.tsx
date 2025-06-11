@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
-import { Archive, TrendingUp, Users, DollarSign } from 'lucide-react';
+import AdminCharts from '@/components/AdminCharts';
+import { StatCardSkeleton, ChartSkeleton } from '@/components/ui/shimmer';
+import { Archive, TrendingUp, Users, DollarSign, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi, InventoryResponse, Order } from '@/services/adminApi';
 
@@ -21,13 +23,12 @@ const Summary = () => {
       setLoading(true);
       console.log('Fetching summary data...');
       
-      // Fetch inventory, paid orders, and assigned checkers
       const [inventoryData, ordersData] = await Promise.all([
         adminApi.getInventory(),
         adminApi.getOrders({ payment_status: 'paid' })
       ]);
       
-      console.log('Inventory data fetched:', inventoryData);
+      console.log('Summary data fetched:', inventoryData);
       setInventory(inventoryData);
       setPaidOrders(ordersData);
 
@@ -81,24 +82,64 @@ const Summary = () => {
     }
   };
 
-  // Calculate revenue from paid orders
   const totalRevenue = paidOrders.reduce((acc, order) => {
     return acc + (order.amount || (order.quantity * getPrice(order.waec_type)));
   }, 0);
 
+  // Prepare chart data
+  const chartData = inventory.byWaecType.map((item) => {
+    const assignedCount = assignedCheckers[item.waec_type] || 0;
+    const waecRevenue = paidOrders
+      .filter(order => order.waec_type === item.waec_type)
+      .reduce((acc, order) => acc + (order.amount || (order.quantity * getPrice(item.waec_type))), 0);
+    const waecOrders = paidOrders.filter(order => order.waec_type === item.waec_type).length;
+    
+    return {
+      waecType: item.waec_type,
+      revenue: waecRevenue,
+      orders: waecOrders,
+      available: item.available || 0,
+      total: item.total || 0,
+    };
+  });
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading inventory data...</p>
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-lg p-6 text-white animate-pulse">
+          <div className="h-8 w-64 bg-white/20 rounded mb-2"></div>
+          <div className="h-4 w-96 bg-white/10 rounded"></div>
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+
+        {/* Charts Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <ChartSkeleton key={i} />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-lg p-6 text-white">
+        <h1 className="text-2xl font-bold mb-2 flex items-center">
+          <BarChart3 className="h-6 w-6 mr-3" />
+          Analytics Summary
+        </h1>
+        <p className="text-green-100">Comprehensive overview of your WAEC checker business performance.</p>
+      </div>
+
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -131,9 +172,15 @@ const Summary = () => {
         />
       </div>
 
+      {/* Charts Section */}
+      <div className="space-y-6">
+        <h2 className="text-xl font-semibold text-gray-900">Performance Analytics</h2>
+        <AdminCharts data={chartData} />
+      </div>
+
       {/* WAEC Type Breakdown */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">WAEC Types Breakdown</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">WAEC Types Detailed Breakdown</h2>
         
         {inventory.byWaecType.length === 0 ? (
           <div className="text-center py-8">
@@ -148,7 +195,7 @@ const Summary = () => {
                 .reduce((acc, order) => acc + (order.amount || (order.quantity * getPrice(order.waec_type))), 0);
               
               return (
-                <div key={item.waec_type} className="border border-gray-200 rounded-lg p-6">
+                <div key={item.waec_type} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
                   <div className="text-center mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">{item.waec_type}</h3>
                     <p className="text-sm text-gray-500">Checker Inventory</p>
@@ -163,7 +210,7 @@ const Summary = () => {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500" 
                           style={{ width: `${calculatePercentage(assignedCount, item.total)}%` }}
                         ></div>
                       </div>
@@ -200,45 +247,6 @@ const Summary = () => {
             })}
           </div>
         )}
-      </div>
-
-      {/* Stock Alerts */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Stock Alerts</h3>
-        <div className="space-y-4">
-          {inventory.byWaecType.map((item) => {
-            const availablePercent = (item.available / item.total) * 100;
-            let alertType = 'good';
-            let alertColor = 'green';
-            let alertMessage = 'Well Stocked';
-            
-            if (availablePercent < 10) {
-              alertType = 'critical';
-              alertColor = 'red';
-              alertMessage = 'Critical Low Stock';
-            } else if (availablePercent < 30) {
-              alertType = 'warning';
-              alertColor = 'yellow';
-              alertMessage = 'Running Low';
-            }
-            
-            return (
-              <div key={item.waec_type} className={`bg-${alertColor}-50 border border-${alertColor}-200 rounded-lg p-4`}>
-                <div className="flex items-center">
-                  <div className={`w-3 h-3 bg-${alertColor}-500 rounded-full mr-3`}></div>
-                  <div>
-                    <p className={`font-medium text-${alertColor}-900`}>
-                      {item.waec_type} {alertMessage}
-                    </p>
-                    <p className={`text-sm text-${alertColor}-700`}>
-                      {item.available.toLocaleString()} checkers available ({availablePercent.toFixed(1)}% of total)
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );

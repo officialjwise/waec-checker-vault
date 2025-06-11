@@ -1,9 +1,18 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi, UploadResult } from '@/services/adminApi';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const UploadCheckers = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -11,25 +20,33 @@ const UploadCheckers = () => {
   const [uploading, setUploading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const validateFileType = (file: File): boolean => {
+    const allowedTypes = ['text/csv', 'application/vnd.ms-excel'];
+    const fileName = file.name.toLowerCase();
+    return allowedTypes.includes(file.type) || fileName.endsWith('.csv');
+  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     console.log('File selected:', file);
     
-    if (file && file.type === 'text/csv') {
-      setSelectedFile(file);
-      setUploadResult(null);
-      setPreviewData([]);
-      handlePreview(file);
-    } else {
-      toast({
-        title: "Invalid File",
-        description: "Please select a valid CSV file.",
-        variant: "destructive",
-      });
+    if (!file) return;
+
+    if (!validateFileType(file)) {
+      setErrorMessage('Invalid file type. Please select a CSV file.');
+      setShowErrorDialog(true);
+      return;
     }
+
+    setSelectedFile(file);
+    setUploadResult(null);
+    setPreviewData([]);
+    handlePreview(file);
   };
 
   const handleButtonClick = () => {
@@ -41,20 +58,42 @@ const UploadCheckers = () => {
     try {
       setPreviewing(true);
       console.log('Previewing CSV file:', file.name);
-      const data = await adminApi.previewCheckers(file);
-      console.log('Preview data:', data);
-      setPreviewData(data.slice(0, 5)); // Show first 5 rows
+      
+      // Read file content manually for preview
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        throw new Error('File must contain at least a header row and one data row');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const requiredHeaders = ['serial', 'pin', 'waec_type'];
+      
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
+      }
+
+      const previewRows = lines.slice(1, 6).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        return {
+          serial: values[headers.indexOf('serial')] || '',
+          pin: values[headers.indexOf('pin')] || '',
+          waec_type: values[headers.indexOf('waec_type')] || ''
+        };
+      });
+
+      setPreviewData(previewRows);
       toast({
         title: "Preview Generated",
-        description: `Loaded ${data.length} rows from CSV file.`,
+        description: `Loaded ${lines.length - 1} rows from CSV file.`,
       });
     } catch (error) {
       console.error('Error previewing file:', error);
-      toast({
-        title: "Preview Failed",
-        description: "Failed to preview CSV file. Please check the format.",
-        variant: "destructive",
-      });
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to preview CSV file. Please check the format.');
+      setShowErrorDialog(true);
+      clearFile();
     } finally {
       setPreviewing(false);
     }
@@ -71,16 +110,13 @@ const UploadCheckers = () => {
       setUploadResult(result);
       
       toast({
-        title: "Upload Successful",
-        description: `Inserted ${result.inserted} checkers, skipped ${result.skipped}.`,
+        title: "Upload Successful!",
+        description: `Successfully inserted ${result.inserted} checkers, skipped ${result.skipped} duplicates.`,
       });
     } catch (error) {
       console.error('Error uploading file:', error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload checkers. Please try again.",
-        variant: "destructive",
-      });
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to upload checkers. Please try again.');
+      setShowErrorDialog(true);
     } finally {
       setUploading(false);
     }
@@ -113,21 +149,19 @@ const UploadCheckers = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload WAEC Checkers</h2>
         
         {!selectedFile ? (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
             <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Choose CSV file</h3>
             <p className="text-gray-500 mb-4">Upload your WAEC checkers data</p>
             
-            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv"
+              accept=".csv,text/csv,application/vnd.ms-excel"
               onChange={handleFileSelect}
               className="hidden"
             />
             
-            {/* Visible button */}
             <Button onClick={handleButtonClick} type="button">
               Select CSV File
             </Button>
@@ -135,12 +169,12 @@ const UploadCheckers = () => {
         ) : (
           <div className="space-y-4">
             {/* File Info */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
               <div className="flex items-center space-x-3">
-                <FileText className="h-8 w-8 text-blue-500" />
+                <FileText className="h-8 w-8 text-green-500" />
                 <div>
-                  <p className="font-medium text-gray-900">{selectedFile.name}</p>
-                  <p className="text-sm text-gray-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  <p className="font-medium text-green-900">{selectedFile.name}</p>
+                  <p className="text-sm text-green-700">{(selectedFile.size / 1024).toFixed(1)} KB</p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={clearFile}>
@@ -159,23 +193,27 @@ const UploadCheckers = () => {
 
             {/* Preview */}
             {previewData.length > 0 && !previewing && (
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">Preview (first 5 rows)</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">Preview (first 5 rows)</h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-100">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PIN</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WAEC Type</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Serial</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PIN</th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">WAEC Type</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {previewData.map((row, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.serial}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.pin}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.waec_type}</td>
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-sm text-gray-900 font-mono">{row.serial}</td>
+                          <td className="px-4 py-2 text-sm text-gray-900 font-mono">{row.pin}</td>
+                          <td className="px-4 py-2 text-sm">
+                            <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                              {row.waec_type}
+                            </span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -190,9 +228,16 @@ const UploadCheckers = () => {
                 <Button 
                   onClick={handleUpload} 
                   disabled={uploading}
-                  className="min-w-[120px]"
+                  className="min-w-[150px]"
                 >
-                  {uploading ? 'Uploading...' : 'Upload to Database'}
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Uploading...
+                    </>
+                  ) : (
+                    'Upload to Database'
+                  )}
                 </Button>
               </div>
             )}
@@ -203,10 +248,13 @@ const UploadCheckers = () => {
       {/* Upload Result */}
       {uploadResult && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Result</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+            Upload Completed Successfully
+          </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg">
+            <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
               <CheckCircle className="h-8 w-8 text-green-500" />
               <div>
                 <p className="font-semibold text-green-900">Inserted</p>
@@ -214,7 +262,7 @@ const UploadCheckers = () => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg">
+            <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
               <AlertCircle className="h-8 w-8 text-yellow-500" />
               <div>
                 <p className="font-semibold text-yellow-900">Skipped</p>
@@ -224,8 +272,11 @@ const UploadCheckers = () => {
           </div>
 
           {uploadResult.errors.length > 0 && (
-            <div className="p-4 bg-red-50 rounded-lg">
-              <h4 className="font-semibold text-red-900 mb-2">Errors</h4>
+            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+              <h4 className="font-semibold text-red-900 mb-2 flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-1" />
+                Errors Encountered
+              </h4>
               <ul className="text-sm text-red-800 space-y-1">
                 {uploadResult.errors.map((error, index) => (
                   <li key={index}>• {error}</li>
@@ -235,6 +286,26 @@ const UploadCheckers = () => {
           )}
         </div>
       )}
+
+      {/* Error Dialog */}
+      <AlertDialog open={showErrorDialog} onOpenChange={setShowErrorDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center text-red-600">
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              Upload Error
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-700">
+              {errorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowErrorDialog(false)}>
+              Understood
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
