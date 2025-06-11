@@ -21,6 +21,7 @@ const Success = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [verificationError, setVerificationError] = useState("");
   const [isNetworkError, setIsNetworkError] = useState(false);
+  const [hasVerified, setHasVerified] = useState(false); // Add flag to prevent re-verification
 
   const examTypeNames = {
     bece: "BECE",
@@ -38,6 +39,12 @@ const Success = () => {
 
   // Process URL parameters on mount and verify payment
   useEffect(() => {
+    // Prevent re-verification if we've already verified successfully
+    if (hasVerified) {
+      console.log("Already verified, skipping verification process");
+      return;
+    }
+
     console.log("=== SUCCESS PAGE DEBUG START ===");
     console.log("Full URL:", window.location.href);
     console.log("Search params object:", Object.fromEntries(searchParams.entries()));
@@ -89,7 +96,7 @@ const Success = () => {
     }
     
     console.log("=== SUCCESS PAGE DEBUG END ===");
-  }, [searchParams]);
+  }, [searchParams, hasVerified]); // Add hasVerified to dependencies
 
   const verifyPayment = async (reference: string) => {
     console.log("=== PAYMENT VERIFICATION START ===");
@@ -119,10 +126,10 @@ const Success = () => {
           console.log("- Phone:", orderData.phone_number);
           console.log("- Checkers count:", orderData.checkers.length);
           
-          setOrderId(orderData.order_id);
-          setWaecType(orderData.waec_type.toLowerCase());
-          setQuantity(orderData.quantity);
-          setPhoneNumber(orderData.phone_number);
+          setOrderId(orderData.order_id || "");
+          setWaecType(orderData.waec_type ? orderData.waec_type.toLowerCase() : "");
+          setQuantity(orderData.quantity || 1);
+          setPhoneNumber(orderData.phone_number || "");
           setCheckers(orderData.checkers);
           
           const now = new Date();
@@ -142,8 +149,13 @@ const Success = () => {
             description: response.message || "Your payment has been verified and checkers have been generated.",
           });
           
-          // Clean up URL
-          navigate("/success", { replace: true });
+          // Set verification flag before cleaning URL
+          setHasVerified(true);
+          
+          // Clean up URL after a short delay to ensure state is set
+          setTimeout(() => {
+            navigate("/success", { replace: true });
+          }, 100);
         } else {
           console.log("No checkers found in order data");
           console.log("Order data:", orderData);
@@ -193,6 +205,7 @@ const Success = () => {
       // This would require an additional endpoint to fetch order details
       // For now, we'll extract basic info from URL parameters
       setOrderId(orderIdParam);
+      setHasVerified(true); // Set flag for direct order ID verification too
       
       console.log("Order details set successfully");
       
