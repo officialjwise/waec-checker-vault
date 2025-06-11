@@ -246,6 +246,23 @@ class ClientApiService {
         signal: AbortSignal.timeout(30000), // 30 second timeout
       });
 
+      // Handle 404 specifically for "no checkers found"
+      if (response.status === 404) {
+        let errorMessage = "No checkers found for this phone number";
+        try {
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorMessage;
+          } catch {
+            // Use default message if parsing fails
+          }
+        } catch {
+          // Use default message if reading response fails
+        }
+        throw new Error(errorMessage);
+      }
+
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
         try {

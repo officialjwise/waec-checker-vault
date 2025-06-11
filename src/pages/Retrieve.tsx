@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,33 +76,40 @@ const Retrieve = () => {
       const response = await clientApi.initiateRetrieve(fullPhoneNumber);
       console.log('Initiate retrieve response:', response);
       
-      toast({
-        title: "OTP sent",
-        description: "We've sent a verification code to your phone number.",
-      });
-      
-      // Navigate to verify page with phone number and response data
-      // Send the clean phone number without leading 0
-      const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
-      
-      const queryParams = new URLSearchParams({
-        phone: cleanNumber, // Don't add leading 0
-        ...(response.requestId && { requestId: response.requestId }),
-        ...(response.prefix && { prefix: response.prefix })
-      });
-      
-      navigate(`/retrieve/verify?${queryParams.toString()}`);
+      // Only proceed if we get a successful response (not a 404 or error)
+      if (response && !response.message?.includes('No checker found')) {
+        toast({
+          title: "OTP sent",
+          description: "We've sent a verification code to your phone number.",
+        });
+        
+        // Navigate to verify page with phone number and response data
+        const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
+        
+        const queryParams = new URLSearchParams({
+          phone: cleanNumber,
+          ...(response.requestId && { requestId: response.requestId }),
+          ...(response.prefix && { prefix: response.prefix })
+        });
+        
+        navigate(`/retrieve/verify?${queryParams.toString()}`);
+      } else {
+        // This shouldn't happen since errors should be thrown, but just in case
+        throw new Error(response.message || 'No checkers found for this phone number');
+      }
       
     } catch (error) {
       console.error('Error initiating retrieve:', error);
       
       const errorMessage = error instanceof Error ? error.message : 'Failed to send verification code';
       
-      // Check if it's a "no checkers found" type error
-      if (errorMessage.includes('No checkers found') || errorMessage.includes('404')) {
+      // Handle specific error cases
+      if (errorMessage.includes('No checker found') || 
+          errorMessage.includes('404') || 
+          errorMessage.includes('Failed to initiate retrieve: 404')) {
         toast({
           title: "No checkers found",
-          description: "No result checkers found for this phone number.",
+          description: "No result checkers found for this phone number. Please check the number and try again.",
           variant: "destructive"
         });
       } else if (errorMessage.includes('Network error') || errorMessage.includes('Failed to fetch')) {
@@ -208,7 +214,7 @@ const Retrieve = () => {
                   {isLoading ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      Sending...
+                      Checking...
                     </>
                   ) : (
                     "Send Verification Code"
