@@ -28,7 +28,10 @@ const Summary = () => {
       ]);
       
       console.log('Summary data fetched:', inventoryData);
-      console.log('Paid orders fetched:', ordersData);
+      console.log('Paid orders fetched - Raw data:', ordersData);
+      console.log('Number of paid orders received:', ordersData.length);
+      console.log('First 3 paid orders structure:', ordersData.slice(0, 3));
+      
       setInventory(inventoryData);
       setPaidOrders(ordersData);
 
@@ -74,33 +77,55 @@ const Summary = () => {
   );
 
   const getPrice = (waecType: string) => {
-    switch (waecType) {
-      case 'BECE': return 50;
-      case 'WASSCE': return 75;
-      case 'NOVDEC': return 60;
-      default: return 65;
-    }
+    const price = (() => {
+      switch (waecType) {
+        case 'BECE': return 50;
+        case 'WASSCE': return 75;
+        case 'NOVDEC': return 60;
+        default: return 65;
+      }
+    })();
+    console.log(`Price for ${waecType}: ${price}`);
+    return price;
   };
 
   // Calculate revenue for an order - prioritize order.amount, fallback to quantity * price
   const calculateOrderRevenue = (order: Order) => {
+    console.log(`Calculating revenue for order ${order.id}:`, {
+      amount: order.amount,
+      quantity: order.quantity,
+      waec_type: order.waec_type,
+      payment_status: order.payment_status
+    });
+    
     // If order has an amount field and it's valid, use it
     if (order.amount && order.amount > 0) {
+      console.log(`Using order.amount: ${order.amount}`);
       return order.amount;
     }
+    
     // Otherwise calculate from quantity and price
-    return order.quantity * getPrice(order.waec_type);
+    const price = getPrice(order.waec_type);
+    const calculatedRevenue = order.quantity * price;
+    console.log(`Calculated from quantity × price: ${order.quantity} × ${price} = ${calculatedRevenue}`);
+    return calculatedRevenue;
   };
 
   // Calculate total revenue from ONLY paid orders
-  const totalRevenue = paidOrders.reduce((acc, order) => {
+  console.log('Starting total revenue calculation...');
+  console.log('paidOrders array length:', paidOrders.length);
+  console.log('paidOrders sample:', paidOrders.slice(0, 2));
+  
+  const totalRevenue = paidOrders.reduce((acc, order, index) => {
     const orderRevenue = calculateOrderRevenue(order);
-    console.log(`Order ${order.id}: quantity=${order.quantity}, waec_type=${order.waec_type}, amount=${order.amount}, calculated_revenue=${orderRevenue}`);
+    console.log(`Order ${index + 1}/${paidOrders.length} - ID: ${order.id}, Revenue: ${orderRevenue}, Running total: ${acc + orderRevenue}`);
     return acc + orderRevenue;
   }, 0);
 
+  console.log('=== FINAL REVENUE CALCULATION ===');
   console.log('Total revenue calculated:', totalRevenue);
-  console.log('Number of paid orders:', paidOrders.length);
+  console.log('Number of paid orders processed:', paidOrders.length);
+  console.log('===================================');
 
   // Prepare chart data - only use paid orders for revenue calculation
   const chartData = inventory.byWaecType.map((item) => {
