@@ -71,7 +71,7 @@ export interface Order {
 }
 
 export interface OrderDetail extends Order {
-  checkers: Checker[];
+  checkers?: Checker[]; // Changed from required to optional
   transaction_id?: string;
   payment_method?: string;
   notes?: string;
@@ -315,6 +315,11 @@ class AdminApiService {
       
       // Synchronize order status with payment status
       const synchronizedOrder = this.synchronizeOrderStatus(orderData);
+      
+      // Ensure checkers property exists even if empty
+      if (!synchronizedOrder.checkers) {
+        synchronizedOrder.checkers = [];
+      }
       
       setCachedData(cacheKey, synchronizedOrder, CACHE_TTL.orders);
       return synchronizedOrder;

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -73,6 +72,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const safeOrderId = order.id || '';
   const safePaymentRef = order.payment_reference || '';
   const safeTransactionId = order.transaction_id || '';
+  
+  // Ensure checkers is always defined
+  const checkers = order.checkers || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -243,14 +245,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </div>
 
           {/* Assigned Checkers with Serial Numbers and PINs */}
-          {order.checkers && order.checkers.length > 0 && (
+          {checkers.length > 0 && (
             <div className="bg-green-50 rounded-lg p-6 border border-green-200">
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                 <Hash className="h-5 w-5 mr-2 text-green-600" />
-                Assigned Checkers ({order.checkers.length}) - Serial Numbers & PINs
+                Assigned Checkers ({checkers.length}) - Serial Numbers & PINs
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                {order.checkers.map((checker, index) => (
+                {checkers.map((checker, index) => (
                   <div key={checker.id} className="bg-white rounded-lg p-4 border border-green-300 shadow-sm">
                     <div className="flex justify-between items-start mb-3">
                       <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
@@ -309,3 +311,5 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 };
 
 export default OrderDetailModal;
+
+</edits_to_apply>

@@ -100,12 +100,12 @@ const Orders = () => {
       const orderDetail = await adminApi.getOrderDetail(order.id);
       
       // Ensure we have a complete order detail object
-      const completeOrderDetail = {
+      const completeOrderDetail: OrderDetail = {
         ...order, // Use the existing order data as fallback
         ...orderDetail, // Override with detailed data
         status: orderDetail.status || order.status || 'pending',
         payment_status: orderDetail.payment_status || order.payment_status || 'unpaid',
-        checkers: orderDetail.checkers || []
+        checkers: orderDetail.checkers || [] // Ensure checkers array exists
       };
       
       setSelectedOrder(completeOrderDetail);
