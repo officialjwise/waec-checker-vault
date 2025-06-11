@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -105,45 +104,56 @@ const Success = () => {
       const response = await clientApi.verifyPayment(reference);
       console.log("Payment verification response:", response);
       
-      if (response.status === "success" && response.checkers && response.checkers.length > 0) {
+      // Handle the new backend response structure where order details are nested in 'order' object
+      if (response.status === "success" && response.order) {
+        const orderData = response.order;
         console.log("Payment verification successful!");
-        console.log("Order details:");
-        console.log("- Order ID:", response.order_id);
-        console.log("- WAEC Type:", response.waec_type);
-        console.log("- Quantity:", response.quantity);
-        console.log("- Phone:", response.phone_number);
-        console.log("- Checkers count:", response.checkers.length);
+        console.log("Order data structure:", orderData);
         
-        setOrderId(response.order_id);
-        setWaecType(response.waec_type.toLowerCase());
-        setQuantity(response.quantity);
-        setPhoneNumber(response.phone_number);
-        setCheckers(response.checkers);
-        
-        const now = new Date();
-        const formattedDate = now.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' @ ' + now.toLocaleTimeString('en-US', {
-          hour12: true,
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-        setPurchaseDate(formattedDate);
-        
-        toast({
-          title: "Payment Verified Successfully",
-          description: response.message || "Your payment has been verified and checkers have been generated.",
-        });
-        
-        // Clean up URL
-        navigate("/success", { replace: true });
+        // Check if checkers exist in the order data
+        if (orderData.checkers && orderData.checkers.length > 0) {
+          console.log("Order details:");
+          console.log("- Order ID:", orderData.order_id);
+          console.log("- WAEC Type:", orderData.waec_type);
+          console.log("- Quantity:", orderData.quantity);
+          console.log("- Phone:", orderData.phone_number);
+          console.log("- Checkers count:", orderData.checkers.length);
+          
+          setOrderId(orderData.order_id);
+          setWaecType(orderData.waec_type.toLowerCase());
+          setQuantity(orderData.quantity);
+          setPhoneNumber(orderData.phone_number);
+          setCheckers(orderData.checkers);
+          
+          const now = new Date();
+          const formattedDate = now.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' @ ' + now.toLocaleTimeString('en-US', {
+            hour12: true,
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          setPurchaseDate(formattedDate);
+          
+          toast({
+            title: "Payment Verified Successfully",
+            description: response.message || "Your payment has been verified and checkers have been generated.",
+          });
+          
+          // Clean up URL
+          navigate("/success", { replace: true });
+        } else {
+          console.log("No checkers found in order data");
+          console.log("Order data:", orderData);
+          throw new Error("No checkers were found in the verified payment");
+        }
       } else {
-        console.log("Payment verification failed - invalid response:");
+        console.log("Payment verification failed - invalid response structure:");
         console.log("- Status:", response.status);
-        console.log("- Checkers:", response.checkers);
-        throw new Error("Payment verification failed or no checkers were generated");
+        console.log("- Order:", response.order);
+        throw new Error("Payment verification failed - invalid response structure");
       }
       
     } catch (error) {
