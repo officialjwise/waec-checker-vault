@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2, Shield, CheckCircle, X, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
@@ -22,8 +22,7 @@ const BuyType = () => {
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("ghana");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [checkingAvailability, setCheckingAvailability] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [availabilityStatus, setAvailabilityStatus] = useState<'checking' | 'available' | 'unavailable'>('checking');
   
   const countries = {
     ghana: { name: "Ghana", code: "+233", flag: "🇬🇭" },
@@ -48,9 +47,8 @@ const BuyType = () => {
   useEffect(() => {
     const checkAvailability = async () => {
       try {
-        setCheckingAvailability(true);
         const availabilityResult = await clientApi.checkAvailability();
-        setIsAvailable(availabilityResult.available);
+        setAvailabilityStatus(availabilityResult.available ? 'available' : 'unavailable');
         
         if (!availabilityResult.available) {
           toast({
@@ -61,14 +59,12 @@ const BuyType = () => {
         }
       } catch (error) {
         console.error('Error checking availability:', error);
+        setAvailabilityStatus('unavailable');
         toast({
           title: "Connection Error",
           description: "Unable to check service availability. Please check your connection and try again.",
           variant: "destructive"
         });
-        setIsAvailable(false);
-      } finally {
-        setCheckingAvailability(false);
       }
     };
 
@@ -146,7 +142,7 @@ const BuyType = () => {
       return;
     }
 
-    if (!isAvailable) {
+    if (availabilityStatus === 'unavailable') {
       toast({
         title: "Service Unavailable",
         description: "Checkers are currently not available. Please try again later.",
@@ -215,20 +211,6 @@ const BuyType = () => {
     );
   }
 
-  if (checkingAvailability) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
-        <Header />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600">Checking service availability...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
       <Header 
@@ -241,17 +223,32 @@ const BuyType = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
-          {/* Availability Warning */}
-          {!isAvailable && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center">
-                <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
-                <p className="text-red-800 font-medium">Service Currently Unavailable</p>
-              </div>
-              <p className="text-red-700 text-sm mt-1">
-                Checkers are temporarily not available. Please try again later.
-              </p>
-            </div>
+          {/* Availability Status */}
+          {availabilityStatus === 'checking' && (
+            <Alert className="mb-6 bg-blue-50 border-blue-200">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                Checking service availability...
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {availabilityStatus === 'available' && (
+            <Alert className="mb-6 bg-green-50 border-green-200">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 font-medium">
+                Checkers are available
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {availabilityStatus === 'unavailable' && (
+            <Alert className="mb-6 bg-red-50 border-red-200">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800 font-medium">
+                Service Currently Unavailable - Checkers are temporarily not available. Please try again later.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Progress Indicator */}
@@ -405,7 +402,7 @@ const BuyType = () => {
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                    disabled={isProcessing || !isAvailable}
+                    disabled={isProcessing || availabilityStatus === 'unavailable'}
                   >
                     {isProcessing ? (
                       <>
