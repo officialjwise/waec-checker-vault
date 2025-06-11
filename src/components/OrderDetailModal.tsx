@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash, CheckCircle, AlertCircle, Copy } from 'lucide-react';
+import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { OrderDetail } from '@/services/adminApi';
-import { useToast } from '@/hooks/use-toast';
 
 interface OrderDetailModalProps {
   order: OrderDetail | null;
@@ -23,8 +22,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   isOpen, 
   onClose
 }) => {
-  const { toast } = useToast();
-
   if (!order) return null;
 
   const getStatusColor = (status: string) => {
@@ -77,12 +74,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     const orderStatus = order.status || 'pending';
 
     // If payment is paid, status should be completed
-    if (paymentStatus === 'paid' && orderStatus !== 'cancelled') {
+    if (paymentStatus === 'paid' && orderStatus === 'pending') {
       return 'completed';
     }
     
     // If payment is unpaid, status should be pending
-    if (paymentStatus === 'unpaid' && orderStatus !== 'cancelled') {
+    if (paymentStatus === 'unpaid' && orderStatus === 'completed') {
       return 'pending';
     }
 
@@ -96,25 +93,9 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const safePaymentRef = order.payment_reference || '';
   const safeTransactionId = order.transaction_id || '';
 
-  const copyToClipboard = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied!",
-        description: `${label} copied to clipboard`,
-      });
-    } catch (err) {
-      toast({
-        title: "Failed to copy",
-        description: "Could not copy to clipboard",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center">
             <Package className="h-6 w-6 mr-2 text-blue-600" />
@@ -280,56 +261,33 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Enhanced Assigned Checkers Section */}
+          {/* Assigned Checkers */}
           {order.checkers && order.checkers.length > 0 && (
             <div className="bg-green-50 rounded-lg p-6 border border-green-200">
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                 <Hash className="h-5 w-5 mr-2 text-green-600" />
                 Assigned Checkers ({order.checkers.length})
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto">
                 {order.checkers.map((checker, index) => (
-                  <div key={checker.id} className="bg-white rounded-lg p-4 border border-green-300 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-3">
+                  <div key={checker.id} className="bg-white rounded-lg p-4 border border-green-300 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
                       <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-medium">
                         {checker.waec_type}
                       </span>
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">#{index + 1}</span>
+                      <span className="text-xs text-gray-500">#{index + 1}</span>
                     </div>
-                    
-                    <div className="space-y-3">
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs text-gray-600 font-medium">Serial Number</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => copyToClipboard(checker.serial, 'Serial number')}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <p className="font-mono text-sm font-bold text-blue-600 break-all">{checker.serial}</p>
+                    <div className="space-y-1">
+                      <div>
+                        <p className="text-xs text-gray-600">Serial Number</p>
+                        <p className="font-mono text-sm font-medium">{checker.serial}</p>
                       </div>
-                      
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs text-gray-600 font-medium">PIN Code</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => copyToClipboard(checker.pin, 'PIN code')}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <p className="font-mono text-sm font-bold text-green-600 break-all">{checker.pin}</p>
+                      <div>
+                        <p className="text-xs text-gray-600">PIN Code</p>
+                        <p className="font-mono text-sm font-medium">{checker.pin}</p>
                       </div>
-                      
                       {checker.assigned_at && (
-                        <div className="flex items-center mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex items-center mt-2 pt-2 border-t border-gray-200">
                           <Clock className="h-3 w-3 text-gray-400 mr-1" />
                           <p className="text-xs text-gray-500">
                             Assigned: {formatDate(checker.assigned_at)}
@@ -339,18 +297,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     </div>
                   </div>
                 ))}
-              </div>
-              
-              {/* Summary section for checkers */}
-              <div className="mt-4 p-4 bg-white rounded-lg border border-green-200">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Total Checkers Assigned:</span>
-                  <span className="font-semibold text-green-600">{order.checkers.length}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-gray-600">WAEC Type:</span>
-                  <span className="font-semibold">{order.waec_type}</span>
-                </div>
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 const BASE_URL = 'https://waec-backend.onrender.com/api';
-const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
+const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
 // Get the admin token from localStorage
 const getAuthHeaders = () => {
@@ -21,45 +21,6 @@ const getMultipartAuthHeaders = () => {
     'Authorization': token ? `Bearer ${token}` : '',
   };
 };
-
-// Simple cache implementation
-class SimpleCache {
-  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
-
-  set(key: string, data: any, ttlMinutes: number = 5): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl: ttlMinutes * 60 * 1000
-    });
-  }
-
-  get(key: string): any | null {
-    const item = this.cache.get(key);
-    if (!item) return null;
-    
-    if (Date.now() - item.timestamp > item.ttl) {
-      this.cache.delete(key);
-      return null;
-    }
-    
-    return item.data;
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  invalidate(pattern: string): void {
-    for (const key of this.cache.keys()) {
-      if (key.includes(pattern)) {
-        this.cache.delete(key);
-      }
-    }
-  }
-}
-
-const cache = new SimpleCache();
 
 export interface Order {
   id: string;
@@ -232,10 +193,9 @@ class AdminApiService {
 
   // Logout functionality
   async logout(): Promise<void> {
-    console.log('Logging out - clearing credentials and cache');
+    console.log('Logging out - clearing credentials');
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_authenticated');
-    cache.clear();
   }
 
   // Check if admin is authenticated
@@ -290,16 +250,8 @@ class AdminApiService {
     return response;
   }
 
-  // Orders API methods - updated with caching
+  // Orders API methods - updated to return just the data array
   async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
-    const cacheKey = `orders-${JSON.stringify(filters)}`;
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached orders data');
-      return cachedData;
-    }
-
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) queryParams.append(key, value.toString());
@@ -318,44 +270,14 @@ class AdminApiService {
       const ordersData = responseData.data || [];
       console.log('Extracted orders data:', ordersData);
       
-      // Sync order status with payment status before caching
-      const syncedOrders = ordersData.map((order: Order) => ({
-        ...order,
-        status: this.syncOrderStatusWithPayment(order.status, order.payment_status)
-      }));
-      
-      cache.set(cacheKey, syncedOrders, 2); // Cache for 2 minutes
-      return syncedOrders;
+      return ordersData;
     } catch (error) {
       console.error('Error in getOrders:', error);
       throw error;
     }
   }
 
-  // Helper method to sync order status with payment status
-  private syncOrderStatusWithPayment(orderStatus: string, paymentStatus: string): string {
-    // If payment is paid, order should be completed (unless cancelled)
-    if (paymentStatus === 'paid' && orderStatus !== 'cancelled') {
-      return 'completed';
-    }
-    
-    // If payment is unpaid, order should be pending (unless cancelled)
-    if (paymentStatus === 'unpaid' && orderStatus !== 'cancelled') {
-      return 'pending';
-    }
-    
-    return orderStatus;
-  }
-
   async getOrderDetail(orderId: string): Promise<OrderDetail> {
-    const cacheKey = `order-detail-${orderId}`;
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached order detail');
-      return cachedData;
-    }
-
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders/${orderId}`);
 
@@ -383,13 +305,7 @@ class AdminApiService {
         orderData = responseData.data || responseData;
       }
       
-      // Sync status before caching
-      if (orderData) {
-        orderData.status = this.syncOrderStatusWithPayment(orderData.status, orderData.payment_status);
-      }
-      
       console.log('Processed order data:', orderData);
-      cache.set(cacheKey, orderData, 5); // Cache for 5 minutes
       return orderData;
     } catch (error) {
       console.error('Error in getOrderDetail:', error);
@@ -408,10 +324,6 @@ class AdminApiService {
         throw new Error(`Failed to update order status: ${response.status}`);
       }
 
-      // Invalidate related cache entries
-      cache.invalidate('orders');
-      cache.invalidate(`order-detail-${orderId}`);
-
       return response.json();
     } catch (error) {
       console.error('Error in updateOrderStatus:', error);
@@ -419,16 +331,8 @@ class AdminApiService {
     }
   }
 
-  // Checkers API methods - updated with better error handling and caching
+  // Checkers API methods - updated with better error handling
   async getCheckers(filters: CheckerFilters = {}): Promise<Checker[]> {
-    const cacheKey = `checkers-${JSON.stringify(filters)}`;
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached checkers data');
-      return cachedData;
-    }
-
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
@@ -445,7 +349,6 @@ class AdminApiService {
       console.log('Checkers response:', responseData);
       
       const checkersData = responseData.data || responseData || [];
-      cache.set(cacheKey, checkersData, 3); // Cache for 3 minutes
       return checkersData;
     } catch (error) {
       console.error('Error in getCheckers:', error);
@@ -484,14 +387,39 @@ class AdminApiService {
     try {
       console.log('Uploading to endpoint:', `${BASE_URL}/admin/checkers`);
       
-      // Try FormData approach first (which the server likely expects)
-      const formData = new FormData();
-      formData.append('file', file);
+      // Read the file content and parse CSV to JSON
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        throw new Error('File must contain at least a header row and one data row');
+      }
 
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const requiredHeaders = ['serial', 'pin', 'waec_type'];
+      
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
+      }
+
+      const checkers = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        return {
+          serial: values[headers.indexOf('serial')] || '',
+          pin: values[headers.indexOf('pin')] || '',
+          waec_type: values[headers.indexOf('waec_type')] || ''
+        };
+      });
+
+      // Send as JSON instead of FormData
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers`, {
         method: 'POST',
-        headers: getMultipartAuthHeaders(), // Don't set Content-Type for FormData
-        body: formData,
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ checkers }),
       });
 
       console.log('Upload response status:', response.status);
@@ -505,11 +433,6 @@ class AdminApiService {
 
       const result = await response.json();
       console.log('Upload successful, result:', result);
-      
-      // Invalidate checkers cache after successful upload
-      cache.invalidate('checkers');
-      cache.invalidate('inventory');
-      
       return result;
     } catch (error) {
       console.error('Error in uploadCheckers:', error);
@@ -526,10 +449,6 @@ class AdminApiService {
       if (!response.ok) {
         throw new Error(`Failed to delete checker: ${response.status}`);
       }
-
-      // Invalidate related cache entries
-      cache.invalidate('checkers');
-      cache.invalidate('inventory');
     } catch (error) {
       console.error('Error in deleteChecker:', error);
       throw error;
@@ -547,10 +466,6 @@ class AdminApiService {
         throw new Error(`Failed to bulk delete checkers: ${response.status}`);
       }
 
-      // Invalidate related cache entries
-      cache.invalidate('checkers');
-      cache.invalidate('inventory');
-
       return response.json();
     } catch (error) {
       console.error('Error in bulkDeleteCheckers:', error);
@@ -558,16 +473,8 @@ class AdminApiService {
     }
   }
 
-  // OTP Requests API methods - updated with caching
+  // OTP Requests API methods - updated with better error handling
   async getOtpRequests(filters: OtpFilters = {}): Promise<OtpRequest[]> {
-    const cacheKey = `otp-requests-${JSON.stringify(filters)}`;
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached OTP requests');
-      return cachedData;
-    }
-
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
@@ -584,7 +491,6 @@ class AdminApiService {
       console.log('OTP requests response:', responseData);
       
       const otpData = responseData.data || responseData || [];
-      cache.set(cacheKey, otpData, 3); // Cache for 3 minutes
       return otpData;
     } catch (error) {
       console.error('Error in getOtpRequests:', error);
@@ -592,16 +498,8 @@ class AdminApiService {
     }
   }
 
-  // Inventory API method - updated with caching
+  // Inventory API method - updated to handle new structure
   async getInventory(): Promise<InventoryResponse> {
-    const cacheKey = 'inventory';
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached inventory data');
-      return cachedData;
-    }
-
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/inventory`);
 
@@ -614,7 +512,6 @@ class AdminApiService {
       
       // Extract the data from the response object
       const inventoryData = responseData.data || { byWaecType: [], lowStock: [] };
-      cache.set(cacheKey, inventoryData, 5); // Cache for 5 minutes
       return inventoryData;
     } catch (error) {
       console.error('Error in getInventory:', error);
@@ -622,16 +519,8 @@ class AdminApiService {
     }
   }
 
-  // Admin Stats API method - updated with caching
+  // Admin Stats API method - updated with better error handling
   async getAdminStats(): Promise<AdminStats> {
-    const cacheKey = 'admin-stats';
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached admin stats');
-      return cachedData;
-    }
-
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/stats`);
 
@@ -644,7 +533,6 @@ class AdminApiService {
       
       // Extract the data from the response object
       const statsData = responseData.data || responseData;
-      cache.set(cacheKey, statsData, 10); // Cache for 10 minutes
       return statsData;
     } catch (error) {
       console.error('Error in getAdminStats:', error);
@@ -652,16 +540,8 @@ class AdminApiService {
     }
   }
 
-  // Logs API method - updated with caching
+  // Logs API method - updated with better error handling
   async getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
-    const cacheKey = `logs-${JSON.stringify(filters)}`;
-    const cachedData = cache.get(cacheKey);
-    
-    if (cachedData) {
-      console.log('Returning cached logs data');
-      return cachedData;
-    }
-
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
@@ -678,9 +558,7 @@ class AdminApiService {
       console.log('Logs response:', responseData);
       
       const logsData = responseData.data || responseData || [];
-      const validLogsData = Array.isArray(logsData) ? logsData : [];
-      cache.set(cacheKey, validLogsData, 5); // Cache for 5 minutes
-      return validLogsData;
+      return Array.isArray(logsData) ? logsData : [];
     } catch (error) {
       console.error('Error in getLogs:', error);
       throw error;
@@ -689,7 +567,7 @@ class AdminApiService {
 
   // Utility methods for data validation
   validateOrderData(order: any): Order {
-    const validatedOrder = {
+    return {
       id: order.id || '',
       phone: order.phone || '',
       email: order.email || '',
@@ -702,11 +580,6 @@ class AdminApiService {
       created_at: order.created_at || new Date().toISOString(),
       updated_at: order.updated_at || new Date().toISOString(),
     };
-
-    // Sync status with payment status
-    validatedOrder.status = this.syncOrderStatusWithPayment(validatedOrder.status, validatedOrder.payment_status);
-    
-    return validatedOrder;
   }
 
   validateCheckerData(checker: any): Checker {
@@ -721,12 +594,6 @@ class AdminApiService {
       created_at: checker.created_at || new Date().toISOString(),
       updated_at: checker.updated_at,
     };
-  }
-
-  // Method to clear cache manually
-  clearCache(): void {
-    cache.clear();
-    console.log('Cache cleared manually');
   }
 }
 
