@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Phone, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import { clientApi } from "@/services/clientApi";
 
 const Retrieve = () => {
   const navigate = useNavigate();
@@ -69,33 +70,57 @@ const Retrieve = () => {
 
     setIsLoading(true);
     
-    // Simulate API call to request OTP
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const fullPhoneNumber = getFullPhoneNumber();
-    const cleanPhoneForCheck = fullPhoneNumber.replace(/\D/g, '');
-    
-    // Check if it's our test number or simulate checking if phone number has purchases (80% success rate)
-    const hasCheckers = cleanPhoneForCheck.includes("233543482189") || Math.random() > 0.2;
-    
-    if (hasCheckers) {
+    try {
+      const fullPhoneNumber = getFullPhoneNumber();
+      console.log('Initiating retrieve for phone:', fullPhoneNumber);
+      
+      const response = await clientApi.initiateRetrieve(fullPhoneNumber);
+      console.log('Initiate retrieve response:', response);
+      
       toast({
         title: "OTP sent",
         description: "We've sent a verification code to your phone number.",
       });
       
-      // Navigate to verify page with phone number (send just the local part)
+      // Navigate to verify page with phone number and response data
       const localNumber = country === "ghana" 
         ? (phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber)
         : (phoneNumber.startsWith('0') ? phoneNumber.substring(1) : phoneNumber);
       
-      navigate(`/retrieve/verify?phone=${encodeURIComponent(`0${localNumber}`)}`);
-    } else {
-      toast({
-        title: "No checkers found",
-        description: "No result checkers found for this phone number.",
-        variant: "destructive"
+      const queryParams = new URLSearchParams({
+        phone: `0${localNumber}`,
+        ...(response.requestId && { requestId: response.requestId }),
+        ...(response.prefix && { prefix: response.prefix })
       });
+      
+      navigate(`/retrieve/verify?${queryParams.toString()}`);
+      
+    } catch (error) {
+      console.error('Error initiating retrieve:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send verification code';
+      
+      // Check if it's a "no checkers found" type error
+      if (errorMessage.includes('No checkers found') || errorMessage.includes('404')) {
+        toast({
+          title: "No checkers found",
+          description: "No result checkers found for this phone number.",
+          variant: "destructive"
+        });
+      } else if (errorMessage.includes('Network error') || errorMessage.includes('Failed to fetch')) {
+        toast({
+          title: "Connection Error",
+          description: "Unable to connect to the server. Please check your internet connection and try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
+    } finally {
       setIsLoading(false);
     }
   };

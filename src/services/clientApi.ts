@@ -36,6 +36,36 @@ export interface VerifyPaymentResponse {
   redirect_url: string;
 }
 
+export interface RetrieveInitiateRequest {
+  phone: string;
+}
+
+export interface RetrieveInitiateResponse {
+  message?: string;
+  requestId?: string;
+  prefix?: string;
+  status?: string;
+}
+
+export interface RetrieveVerifyRequest {
+  phone: string;
+  otp: string;
+  requestId: string;
+  prefix: string;
+}
+
+export interface RetrieveVerifyResponse {
+  status: string;
+  message: string;
+  checkers?: Array<{
+    id: string;
+    serial: string;
+    pin: string;
+    waec_type: string;
+    created_at: string;
+  }>;
+}
+
 class ClientApiService {
   // Check availability of checkers with optional waec_type filter
   async checkAvailability(waecType?: string): Promise<CheckerAvailability> {
@@ -193,6 +223,141 @@ class ClientApiService {
       const result = await response.json();
       return result;
     } catch (error) {
+      throw error;
+    }
+  }
+
+  // Initiate retrieve process with OTP
+  async initiateRetrieve(phoneNumber: string): Promise<RetrieveInitiateResponse> {
+    try {
+      // Format phone number to international format without +
+      const formattedPhone = this.formatPhoneNumber(phoneNumber, 'ghana').replace('+', '');
+      
+      const response = await fetch(`${BASE_URL}/retrieve/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: formattedPhone
+        }),
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorText = await response.text();
+          
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || errorText;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          // Could not parse error response
+        }
+
+        throw new Error(`Failed to initiate retrieve: ${response.status} - ${errorMessage}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      // Handle different types of errors with specific messages
+      if (error instanceof TypeError) {
+        if (error.message.includes('Failed to fetch')) {
+          const networkError = new Error(`Network error: Unable to connect to ${BASE_URL}. 
+            This could be due to:
+            1. Backend server is down
+            2. CORS issues
+            3. Network connectivity problems
+            4. Incorrect base URL
+            
+            Please verify the backend is running and accessible.`);
+          throw networkError;
+        }
+        
+        if (error.message.includes('timeout')) {
+          throw new Error('Request timeout: The server took too long to respond. Please try again.');
+        }
+      }
+
+      if (error.name === 'AbortError') {
+        throw new Error('Request was aborted due to timeout (30 seconds). Please check your connection and try again.');
+      }
+      
+      // Re-throw the error if it's already a meaningful application error
+      throw error;
+    }
+  }
+
+  // Verify OTP and get checkers
+  async verifyRetrieveOtp(phoneNumber: string, otp: string, requestId: string, prefix: string): Promise<RetrieveVerifyResponse> {
+    try {
+      // Format phone number to international format without +
+      const formattedPhone = this.formatPhoneNumber(phoneNumber, 'ghana').replace('+', '');
+      
+      const response = await fetch(`${BASE_URL}/retrieve/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          otp: otp,
+          requestId: requestId,
+          prefix: prefix
+        }),
+        signal: AbortSignal.timeout(30000), // 30 second timeout
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorText = await response.text();
+          
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || errorText;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          // Could not parse error response
+        }
+
+        throw new Error(`Failed to verify OTP: ${response.status} - ${errorMessage}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      // Handle different types of errors with specific messages
+      if (error instanceof TypeError) {
+        if (error.message.includes('Failed to fetch')) {
+          const networkError = new Error(`Network error: Unable to connect to ${BASE_URL}. 
+            This could be due to:
+            1. Backend server is down
+            2. CORS issues
+            3. Network connectivity problems
+            4. Incorrect base URL
+            
+            Please verify the backend is running and accessible.`);
+          throw networkError;
+        }
+        
+        if (error.message.includes('timeout')) {
+          throw new Error('Request timeout: The server took too long to respond. Please try again.');
+        }
+      }
+
+      if (error.name === 'AbortError') {
+        throw new Error('Request was aborted due to timeout (30 seconds). Please check your connection and try again.');
+      }
+      
+      // Re-throw the error if it's already a meaningful application error
       throw error;
     }
   }

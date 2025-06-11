@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Shield, Loader2, RotateCcw, MessageSquare, Home, ExternalLink, Printer, Grid3x3, Rows2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import { clientApi } from "@/services/clientApi";
 
 const RetrieveVerify = () => {
   const [searchParams] = useSearchParams();
@@ -15,6 +16,9 @@ const RetrieveVerify = () => {
   const { toast } = useToast();
   
   const phoneNumber = searchParams.get("phone");
+  const requestId = searchParams.get("requestId");
+  const prefix = searchParams.get("prefix");
+  
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [checkers, setCheckers] = useState([]);
@@ -36,13 +40,6 @@ const RetrieveVerify = () => {
     wassce: "https://ghana.waecdirect.org",
     novdec: "https://ghana.waecdirect.org"
   };
-
-  // Auto-fill OTP for test number
-  useEffect(() => {
-    if (phoneNumber === "0543482189") {
-      setOtp("123456");
-    }
-  }, [phoneNumber]);
 
   // Timer for resend button
   useEffect(() => {
@@ -83,109 +80,111 @@ const RetrieveVerify = () => {
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate OTP verification
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Check if it's our test number with correct OTP or simulate verification
-    const isTestNumber = phoneNumber === "0543482189" && otp === "123456";
-    const success = isTestNumber || Math.random() > 0.1;
-    
-    if (success) {
-      // Generate specific checkers for test number or mock checkers for others
-      let mockCheckers;
-      
-      if (isTestNumber) {
-        mockCheckers = [
-          {
-            id: 1,
-            waecType: "wassce",
-            serial: "WASSCE202400543",
-            pin: "YP543ABC12345",
-            purchaseDate: "2024-01-15",
-            status: "active"
-          },
-          {
-            id: 2,
-            waecType: "bece",
-            serial: "BECE202400482",
-            pin: "YP482DEF67890",
-            purchaseDate: "2024-02-10",
-            status: "active"
-          }
-        ];
-      } else {
-        mockCheckers = [
-          {
-            id: 1,
-            waecType: "wassce",
-            serial: "WASSCE202400123",
-            pin: "YP123ABC45678",
-            purchaseDate: "2024-01-15",
-            status: "active"
-          },
-          {
-            id: 2,
-            waecType: "bece",
-            serial: "BECE202400456",
-            pin: "YP456DEF78901",
-            purchaseDate: "2024-02-10",
-            status: "active"
-          }
-        ];
-      }
-      
-      setCheckers(mockCheckers);
-      setIsVerified(true);
-      
-      // Set purchase date
-      const now = new Date();
-      const formattedDate = now.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }) + ' @ ' + now.toLocaleTimeString('en-US', {
-        hour12: true,
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      setPurchaseDate(formattedDate);
-      
+    if (!requestId || !prefix) {
       toast({
-        title: "Verification successful",
-        description: `Found ${mockCheckers.length} result checkers for your account.`,
-      });
-
-      // Send SMS notification after successful retrieval
-      await sendSmsNotification(mockCheckers);
-    } else {
-      toast({
-        title: "Invalid verification code",
-        description: "The code you entered is incorrect. Please try again.",
+        title: "Missing verification data",
+        description: "Request ID or prefix is missing. Please start the process again.",
         variant: "destructive"
       });
+      return;
     }
+
+    setIsLoading(true);
     
-    setIsLoading(false);
+    try {
+      const fullPhoneNumber = phoneNumber?.startsWith('0') 
+        ? `+233${phoneNumber.substring(1)}` 
+        : `+233${phoneNumber}`;
+      
+      console.log('Verifying OTP with data:', {
+        phone: fullPhoneNumber,
+        otp,
+        requestId,
+        prefix
+      });
+      
+      const response = await clientApi.verifyRetrieveOtp(fullPhoneNumber, otp, requestId, prefix);
+      console.log('Verify OTP response:', response);
+      
+      if (response.status === 'success' && response.checkers) {
+        setCheckers(response.checkers);
+        setIsVerified(true);
+        
+        // Set purchase date
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }) + ' @ ' + now.toLocaleTimeString('en-US', {
+          hour12: true,
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        setPurchaseDate(formattedDate);
+        
+        toast({
+          title: "Verification successful",
+          description: `Found ${response.checkers.length} result checkers for your account.`,
+        });
+
+        // Send SMS notification after successful retrieval
+        await sendSmsNotification(response.checkers);
+      } else {
+        throw new Error(response.message || 'Verification failed');
+      }
+      
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify OTP';
+      
+      toast({
+        title: "Verification failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleResendOtp = async () => {
     setCanResend(false);
     setResendTimer(60);
     
-    // Simulate resend OTP
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Auto-fill for test number again
-    if (phoneNumber === "0543482189") {
-      setOtp("123456");
+    try {
+      const fullPhoneNumber = phoneNumber?.startsWith('0') 
+        ? `+233${phoneNumber.substring(1)}` 
+        : `+233${phoneNumber}`;
+      
+      console.log('Resending OTP for phone:', fullPhoneNumber);
+      
+      const response = await clientApi.initiateRetrieve(fullPhoneNumber);
+      console.log('Resend OTP response:', response);
+      
+      // Update URL with new requestId and prefix if provided
+      if (response.requestId || response.prefix) {
+        const newParams = new URLSearchParams(searchParams);
+        if (response.requestId) newParams.set('requestId', response.requestId);
+        if (response.prefix) newParams.set('prefix', response.prefix);
+        navigate(`/retrieve/verify?${newParams.toString()}`, { replace: true });
+      }
+      
+      toast({
+        title: "Code resent",
+        description: "A new verification code has been sent to your phone.",
+      });
+    } catch (error) {
+      console.error('Error resending OTP:', error);
+      toast({
+        title: "Failed to resend",
+        description: "Could not resend verification code. Please try again.",
+        variant: "destructive"
+      });
+      setCanResend(true);
+      setResendTimer(0);
     }
-    
-    toast({
-      title: "Code resent",
-      description: "A new verification code has been sent to your phone.",
-    });
   };
 
   const handlePrint = () => {
@@ -353,13 +352,6 @@ const RetrieveVerify = () => {
                   <p className="text-gray-600">
                     We've sent a 6-digit code to +233 {phoneNumber}
                   </p>
-                  {phoneNumber === "0543482189" && (
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-800">
-                        Demo mode: OTP auto-filled as <strong>123456</strong>
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 <Card>
@@ -473,7 +465,7 @@ const RetrieveVerify = () => {
                   {checkers.map((checker) => (
                     <div key={checker.id} className="checker-card bg-white border-2 border-gray-800 p-6 text-center">
                       <h3 className="checker-title text-xl font-bold mb-4">
-                        {examTypeNames[checker.waecType]} RESULT CHECKER
+                        {examTypeNames[checker.waec_type?.toLowerCase()] || checker.waec_type} RESULT CHECKER
                       </h3>
                       
                       {/* Dotted line */}
@@ -493,7 +485,7 @@ const RetrieveVerify = () => {
                       
                       <div className="space-y-3">
                         <a
-                          href={resultCheckingUrls[checker.waecType]}
+                          href={resultCheckingUrls[checker.waec_type?.toLowerCase()] || resultCheckingUrls.wassce}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="check-button inline-flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
@@ -539,22 +531,6 @@ const RetrieveVerify = () => {
       </div>
     </>
   );
-
-  if (!phoneNumber) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="text-center py-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Session Expired</h2>
-            <p className="text-gray-600 mb-4">Please start the verification process again.</p>
-            <Link to="/retrieve">
-              <Button>Back to Retrieve</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 };
 
 export default RetrieveVerify;
