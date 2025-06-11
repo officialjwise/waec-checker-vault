@@ -1,3 +1,4 @@
+
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
@@ -281,7 +282,12 @@ class AdminApiService {
         throw new Error(`Failed to fetch order detail: ${response.status}`);
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('Order detail response:', responseData);
+      
+      // Extract the data from the response object if it's wrapped
+      const orderData = responseData.data || responseData;
+      return orderData;
     } catch (error) {
       console.error('Error in getOrderDetail:', error);
       throw error;
@@ -320,7 +326,12 @@ class AdminApiService {
         throw new Error(`Failed to fetch checkers: ${response.status}`);
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('Checkers response:', responseData);
+      
+      // Extract the data array from the response object
+      const checkersData = responseData.data || responseData || [];
+      return checkersData;
     } catch (error) {
       console.error('Error in getCheckers:', error);
       throw error;
@@ -418,7 +429,12 @@ class AdminApiService {
         throw new Error(`Failed to fetch OTP requests: ${response.status}`);
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('OTP requests response:', responseData);
+      
+      // Extract the data array from the response object
+      const otpData = responseData.data || responseData || [];
+      return otpData;
     } catch (error) {
       console.error('Error in getOtpRequests:', error);
       throw error;
@@ -434,7 +450,12 @@ class AdminApiService {
         throw new Error(`Failed to fetch inventory: ${response.status}`);
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('Inventory response:', responseData);
+      
+      // Extract the data array from the response object
+      const inventoryData = responseData.data || responseData || [];
+      return Array.isArray(inventoryData) ? inventoryData : [];
     } catch (error) {
       console.error('Error in getInventory:', error);
       throw error;
@@ -450,7 +471,12 @@ class AdminApiService {
         throw new Error(`Failed to fetch admin stats: ${response.status}`);
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('Admin stats response:', responseData);
+      
+      // Extract the data from the response object
+      const statsData = responseData.data || responseData;
+      return statsData;
     } catch (error) {
       console.error('Error in getAdminStats:', error);
       throw error;
@@ -471,7 +497,12 @@ class AdminApiService {
         throw new Error(`Failed to fetch logs: ${response.status}`);
       }
 
-      return response.json();
+      const responseData = await response.json();
+      console.log('Logs response:', responseData);
+      
+      // Extract the data array from the response object
+      const logsData = responseData.data || responseData || [];
+      return Array.isArray(logsData) ? logsData : [];
     } catch (error) {
       console.error('Error in getLogs:', error);
       throw error;

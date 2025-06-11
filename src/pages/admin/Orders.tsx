@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, Phone, Mail, RefreshCw } from 'lucide-react';
+import { Search, Filter, Eye, Phone, Mail, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import OrderDetailModal from '@/components/OrderDetailModal';
@@ -12,25 +12,43 @@ const Orders = () => {
   const [updating, setUpdating] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
-  const [filterPaid, setFilterPaid] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
   const { toast } = useToast();
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [currentPage]);
 
   const fetchOrders = async (filters: OrderFilters = {}) => {
     try {
       setLoading(true);
       console.log('Fetching orders with filters:', filters);
-      const data = await adminApi.getOrders(filters);
+      
+      // Add pagination to filters
+      const paginatedFilters = {
+        ...filters,
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage
+      };
+      
+      const data = await adminApi.getOrders(paginatedFilters);
       console.log('Orders fetched:', data);
+      
       // Validate and normalize order data
       const validatedOrders = data.map(order => adminApi.validateOrderData(order));
       setOrders(validatedOrders);
+      
+      // Calculate total pages (assuming we get itemsPerPage items unless it's the last page)
+      if (data.length === itemsPerPage) {
+        setTotalPages(Math.max(currentPage + 1, totalPages));
+      } else if (currentPage === 1) {
+        setTotalPages(1);
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
@@ -53,17 +71,14 @@ const Orders = () => {
     if (filterStatus !== 'all') {
       filters.status = filterStatus;
     }
-
-    if (filterPaid !== 'all') {
-      filters.payment_status = filterPaid;
-    }
     
+    setCurrentPage(1); // Reset to first page when applying filters
     fetchOrders(filters);
   };
 
   useEffect(() => {
     applyFilters();
-  }, [filterType, filterStatus, filterPaid]);
+  }, [filterType, filterStatus]);
 
   const filteredOrders = orders.filter(order => {
     if (!searchTerm) return true;
@@ -80,10 +95,10 @@ const Orders = () => {
   const getStatusBadge = (status: string) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
-      processing: 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800'
+      paid: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800'
     };
-    return `px-2 py-1 text-xs font-medium rounded-full ${colors[status as keyof typeof colors]}`;
+    return `px-2 py-1 text-xs font-medium rounded-full ${colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`;
   };
 
   const handleViewOrder = async (order: Order) => {
@@ -91,7 +106,16 @@ const Orders = () => {
       console.log('Fetching order detail for:', order.id);
       const orderDetail = await adminApi.getOrderDetail(order.id);
       console.log('Order detail fetched:', orderDetail);
-      setSelectedOrder(orderDetail);
+      
+      // Ensure the order detail has all required fields
+      const completeOrderDetail = {
+        ...orderDetail,
+        status: orderDetail.status || 'pending',
+        payment_status: orderDetail.payment_status || 'unpaid',
+        checkers: orderDetail.checkers || []
+      };
+      
+      setSelectedOrder(completeOrderDetail);
       setIsModalOpen(true);
     } catch (error) {
       console.error('Error fetching order detail:', error);
@@ -136,6 +160,10 @@ const Orders = () => {
     return quantity * (prices[waecType as keyof typeof prices] || 50);
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -165,7 +193,7 @@ const Orders = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -198,19 +226,8 @@ const Orders = () => {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="completed">Completed</option>
-          </select>
-
-          {/* Payment Status Filter */}
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={filterPaid}
-            onChange={(e) => setFilterPaid(e.target.value)}
-          >
-            <option value="all">All Payment Status</option>
             <option value="paid">Paid</option>
-            <option value="unpaid">Unpaid</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
       </div>
@@ -235,9 +252,6 @@ const Orders = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Payment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -283,17 +297,8 @@ const Orders = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      order.payment_status === 'paid'
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className={getStatusBadge(order.status)}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      {(order.status || 'pending').charAt(0).toUpperCase() + (order.status || 'pending').slice(1)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -321,6 +326,37 @@ const Orders = () => {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {filteredOrders.length > 0 && (
+        <div className="flex items-center justify-between bg-white px-6 py-3 border border-gray-200 rounded-lg">
+          <div className="flex items-center">
+            <p className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Order Detail Modal */}
       <OrderDetailModal 

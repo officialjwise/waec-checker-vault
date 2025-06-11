@@ -32,10 +32,10 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const getStatusColor = (status: string) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      processing: 'bg-blue-100 text-blue-800 border-blue-200',
-      completed: 'bg-green-100 text-green-800 border-green-200'
+      paid: 'bg-green-100 text-green-800 border-green-200',
+      cancelled: 'bg-red-100 text-red-800 border-red-200'
     };
-    return colors[status as keyof typeof colors];
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   const getPaymentColor = (paid: boolean) => {
@@ -51,11 +51,17 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   };
 
   const isPaid = order.payment_status === 'paid';
+  const currentStatus = order.status || 'pending';
 
   const handleStatusUpdate = (newStatus: string) => {
     if (onStatusUpdate) {
       onStatusUpdate(order.id, newStatus);
     }
+  };
+
+  const formatStatusText = (status: string) => {
+    if (!status) return 'Pending';
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
   return (
@@ -145,8 +151,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Current Status</p>
-                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(order.status)}`}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(currentStatus)}`}>
+                    {formatStatusText(currentStatus)}
                   </span>
                 </div>
                 <div>
@@ -157,26 +163,27 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <p className="text-sm text-gray-600">Last Updated</p>
                   <p className="font-medium">{new Date(order.updated_at).toLocaleDateString()}</p>
                 </div>
-                {onStatusUpdate && order.status !== 'completed' && (
+                {onStatusUpdate && currentStatus !== 'paid' && currentStatus !== 'cancelled' && (
                   <div className="pt-2 space-y-2">
                     <p className="text-sm text-gray-600">Update Status:</p>
                     <div className="flex space-x-2">
-                      {order.status === 'pending' && (
+                      {currentStatus === 'pending' && (
                         <Button 
                           size="sm" 
-                          onClick={() => handleStatusUpdate('processing')}
+                          onClick={() => handleStatusUpdate('paid')}
                           disabled={updating === order.id}
                         >
-                          {updating === order.id ? 'Updating...' : 'Start Processing'}
+                          {updating === order.id ? 'Updating...' : 'Mark as Paid'}
                         </Button>
                       )}
-                      {(order.status === 'pending' || order.status === 'processing') && (
+                      {(currentStatus === 'pending') && (
                         <Button 
                           size="sm" 
-                          onClick={() => handleStatusUpdate('completed')}
+                          variant="destructive"
+                          onClick={() => handleStatusUpdate('cancelled')}
                           disabled={updating === order.id}
                         >
-                          {updating === order.id ? 'Updating...' : 'Mark Complete'}
+                          {updating === order.id ? 'Updating...' : 'Cancel Order'}
                         </Button>
                       )}
                     </div>

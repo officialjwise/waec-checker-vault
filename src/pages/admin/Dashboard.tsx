@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
 import { 
@@ -10,40 +10,110 @@ import {
   TrendingUp,
   DollarSign
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { adminApi, AdminStats, InventoryItem } from '@/services/adminApi';
 
 const Dashboard = () => {
-  // Mock data - replace with real API calls
-  const stats = [
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching dashboard data...');
+      
+      // Fetch both stats and inventory
+      const [statsData, inventoryData] = await Promise.all([
+        adminApi.getAdminStats(),
+        adminApi.getInventory()
+      ]);
+      
+      console.log('Stats data:', statsData);
+      console.log('Inventory data:', inventoryData);
+      
+      setStats(statsData);
+      setInventory(inventoryData);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch dashboard data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate totals from inventory if stats are not available
+  const calculateTotals = () => {
+    if (!inventory || inventory.length === 0) {
+      return {
+        totalCheckers: 0,
+        availableCheckers: 0,
+        assignedCheckers: 0,
+        totalRevenue: 0
+      };
+    }
+
+    return inventory.reduce((acc, item) => ({
+      totalCheckers: acc.totalCheckers + (item.total || 0),
+      availableCheckers: acc.availableCheckers + (item.available || 0),
+      assignedCheckers: acc.assignedCheckers + (item.assigned || 0),
+      totalRevenue: acc.totalRevenue + (item.assigned || 0) * getPrice(item.waec_type)
+    }), {
+      totalCheckers: 0,
+      availableCheckers: 0,
+      assignedCheckers: 0,
+      totalRevenue: 0
+    });
+  };
+
+  const getPrice = (waecType: string) => {
+    switch (waecType) {
+      case 'BECE': return 50;
+      case 'WASSCE': return 75;
+      case 'NOVDEC': return 60;
+      default: return 65;
+    }
+  };
+
+  const totals = calculateTotals();
+
+  const dashboardStats = [
     {
       title: 'Total Checkers',
-      value: '12,845',
+      value: (stats?.total_checkers || totals.totalCheckers).toLocaleString(),
       subtitle: 'All WAEC types',
       icon: Archive,
       color: 'blue' as const,
-      trend: { value: '12%', direction: 'up' as const }
     },
     {
       title: 'Active Orders',
-      value: '247',
-      subtitle: 'Pending & completed',
+      value: (stats?.total_orders || 0).toLocaleString(),
+      subtitle: 'All orders',
       icon: List,
       color: 'green' as const,
-      trend: { value: '8%', direction: 'up' as const }
     },
     {
       title: 'Available Checkers',
-      value: '8,592',
+      value: totals.availableCheckers.toLocaleString(),
       subtitle: 'Ready for assignment',
       icon: Upload,
       color: 'yellow' as const
     },
     {
-      title: 'Revenue This Month',
-      value: '₵18,400',
+      title: 'Revenue',
+      value: `₵${(stats?.total_revenue || totals.totalRevenue).toLocaleString()}`,
       subtitle: 'From checker sales',
       icon: DollarSign,
       color: 'purple' as const,
-      trend: { value: '15%', direction: 'up' as const }
     }
   ];
 
@@ -54,11 +124,22 @@ const Dashboard = () => {
     { action: 'CSV Upload', time: '1 day ago', details: '300 NOVDEC checkers added' },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
+        {dashboardStats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
       </div>
@@ -116,26 +197,39 @@ const Dashboard = () => {
       {/* WAEC Types Overview */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">WAEC Types Overview</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-900">BECE</h4>
-            <p className="text-2xl font-bold text-blue-600 mt-2">3,245</p>
-            <p className="text-sm text-blue-700">Available</p>
-            <p className="text-xs text-blue-600 mt-1">₵50 per checker</p>
+        {inventory.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {inventory.map((item) => (
+              <div key={item.waec_type} className="text-center p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-blue-900">{item.waec_type}</h4>
+                <p className="text-2xl font-bold text-blue-600 mt-2">{(item.available || 0).toLocaleString()}</p>
+                <p className="text-sm text-blue-700">Available</p>
+                <p className="text-xs text-blue-600 mt-1">₵{getPrice(item.waec_type)} per checker</p>
+              </div>
+            ))}
           </div>
-          <div className="text-center p-4 bg-green-50 rounded-lg">
-            <h4 className="font-semibold text-green-900">WASSCE</h4>
-            <p className="text-2xl font-bold text-green-600 mt-2">4,892</p>
-            <p className="text-sm text-green-700">Available</p>
-            <p className="text-xs text-green-600 mt-1">₵75 per checker</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-900">BECE</h4>
+              <p className="text-2xl font-bold text-blue-600 mt-2">Loading...</p>
+              <p className="text-sm text-blue-700">Available</p>
+              <p className="text-xs text-blue-600 mt-1">₵50 per checker</p>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <h4 className="font-semibold text-green-900">WASSCE</h4>
+              <p className="text-2xl font-bold text-green-600 mt-2">Loading...</p>
+              <p className="text-sm text-green-700">Available</p>
+              <p className="text-xs text-green-600 mt-1">₵75 per checker</p>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <h4 className="font-semibold text-purple-900">NOVDEC</h4>
+              <p className="text-2xl font-bold text-purple-600 mt-2">Loading...</p>
+              <p className="text-sm text-purple-700">Available</p>
+              <p className="text-xs text-purple-600 mt-1">₵60 per checker</p>
+            </div>
           </div>
-          <div className="text-center p-4 bg-purple-50 rounded-lg">
-            <h4 className="font-semibold text-purple-900">NOVDEC</h4>
-            <p className="text-2xl font-bold text-purple-600 mt-2">455</p>
-            <p className="text-sm text-purple-700">Available</p>
-            <p className="text-xs text-purple-600 mt-1">₵60 per checker</p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
