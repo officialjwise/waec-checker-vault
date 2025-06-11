@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
@@ -29,7 +28,7 @@ export interface Order {
   email: string;
   waec_type: string;
   quantity: number;
-  status: 'pending' | 'completed' | 'processing';
+  status: 'pending' | 'paid' | 'cancelled' | 'completed' | 'processing';
   payment_status: 'paid' | 'unpaid';
   payment_reference?: string;
   amount?: number;
