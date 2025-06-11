@@ -438,7 +438,18 @@ class AdminApiService {
             clearCache('stats');
 
             const result = await response.json();
-            return result;
+            console.log('Upload result:', result);
+            
+            // Transform the backend response to match our UploadResult interface
+            const transformedResult: UploadResult = {
+              inserted: result.count || 0,
+              skipped: 0, // Backend doesn't provide this info
+              errors: [],
+              duplicate_serials: [],
+              invalid_rows: 0
+            };
+            
+            return transformedResult;
           } else {
             const errorText = await response.text();
             console.log(`Endpoint ${endpoint} failed with status ${response.status}:`, errorText);
