@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -89,13 +88,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   const effectiveStatus = getEffectiveStatus();
 
+  // Safe string operations to prevent substring errors
+  const safeOrderId = order.id || '';
+  const safePaymentRef = order.payment_reference || '';
+  const safeTransactionId = order.transaction_id || '';
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center">
             <Package className="h-6 w-6 mr-2 text-blue-600" />
-            Order Details #{order.id.substring(0, 8)}...
+            Order Details #{safeOrderId.length > 8 ? safeOrderId.substring(0, 8) + '...' : safeOrderId}
           </DialogTitle>
           <DialogDescription className="text-gray-500">
             Complete information and transaction details
@@ -112,7 +116,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-3 shadow-sm">
                 <p className="text-sm text-gray-600 mb-1">Order ID</p>
-                <p className="font-medium text-blue-600 font-mono">{order.id}</p>
+                <p className="font-medium text-blue-600 font-mono">{safeOrderId}</p>
               </div>
               <div className="bg-white rounded-lg p-3 shadow-sm">
                 <p className="text-sm text-gray-600 mb-1">WAEC Type</p>
@@ -141,18 +145,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </div>
 
             {/* Payment References */}
-            {(order.payment_reference || order.transaction_id) && (
+            {(safePaymentRef || safeTransactionId) && (
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {order.payment_reference && (
+                {safePaymentRef && (
                   <div className="bg-white rounded-lg p-3 shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Payment Reference</p>
-                    <p className="font-medium text-purple-600 font-mono">{order.payment_reference}</p>
+                    <p className="font-medium text-purple-600 font-mono">{safePaymentRef}</p>
                   </div>
                 )}
-                {order.transaction_id && (
+                {safeTransactionId && (
                   <div className="bg-white rounded-lg p-3 shadow-sm">
                     <p className="text-sm text-gray-600 mb-1">Transaction ID</p>
-                    <p className="font-medium text-indigo-600 font-mono">{order.transaction_id}</p>
+                    <p className="font-medium text-indigo-600 font-mono">{safeTransactionId}</p>
                   </div>
                 )}
               </div>

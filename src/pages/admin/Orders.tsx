@@ -105,10 +105,12 @@ const Orders = () => {
       const orderDetail = await adminApi.getOrderDetail(order.id);
       console.log('Order detail fetched:', orderDetail);
       
+      // Ensure we have a complete order detail object
       const completeOrderDetail = {
-        ...orderDetail,
-        status: orderDetail.status || 'pending',
-        payment_status: orderDetail.payment_status || 'unpaid',
+        ...order, // Use the existing order data as fallback
+        ...orderDetail, // Override with detailed data
+        status: orderDetail.status || order.status || 'pending',
+        payment_status: orderDetail.payment_status || order.payment_status || 'unpaid',
         checkers: orderDetail.checkers || []
       };
       

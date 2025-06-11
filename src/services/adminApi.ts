@@ -288,7 +288,24 @@ class AdminApiService {
       const responseData = await response.json();
       console.log('Order detail response:', responseData);
       
-      const orderData = responseData.data || responseData;
+      // Handle the nested response structure where data is an array with order and checkers
+      let orderData;
+      if (Array.isArray(responseData.data) && responseData.data.length > 0) {
+        // Extract the order and checkers from the nested structure
+        const firstItem = responseData.data[0];
+        if (firstItem.order && firstItem.checkers) {
+          orderData = {
+            ...firstItem.order,
+            checkers: firstItem.checkers
+          };
+        } else {
+          orderData = firstItem;
+        }
+      } else {
+        orderData = responseData.data || responseData;
+      }
+      
+      console.log('Processed order data:', orderData);
       return orderData;
     } catch (error) {
       console.error('Error in getOrderDetail:', error);
@@ -367,15 +384,42 @@ class AdminApiService {
   }
 
   async uploadCheckers(file: File): Promise<UploadResult> {
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
       console.log('Uploading to endpoint:', `${BASE_URL}/admin/checkers`);
+      
+      // Read the file content and parse CSV to JSON
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        throw new Error('File must contain at least a header row and one data row');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const requiredHeaders = ['serial', 'pin', 'waec_type'];
+      
+      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+      if (missingHeaders.length > 0) {
+        throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
+      }
+
+      const checkers = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        return {
+          serial: values[headers.indexOf('serial')] || '',
+          pin: values[headers.indexOf('pin')] || '',
+          waec_type: values[headers.indexOf('waec_type')] || ''
+        };
+      });
+
+      // Send as JSON instead of FormData
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers`, {
         method: 'POST',
-        headers: getMultipartAuthHeaders(),
-        body: formData,
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ checkers }),
       });
 
       console.log('Upload response status:', response.status);
