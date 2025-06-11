@@ -1,4 +1,5 @@
 const BASE_URL = 'https://waec-backend.onrender.com/api';
+const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
 // Get the admin token from localStorage
 const getAuthHeaders = () => {
@@ -6,16 +7,16 @@ const getAuthHeaders = () => {
   console.log('Getting auth headers, token exists:', !!token);
   return {
     'Content-Type': 'application/json',
+    'X-API-Key': ADMIN_API_KEY,
     'Authorization': token ? `Bearer ${token}` : '',
-    'X-API-Key': token || '',
   };
 };
 
 const getMultipartAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   return {
+    'X-API-Key': ADMIN_API_KEY,
     'Authorization': token ? `Bearer ${token}` : '',
-    'X-API-Key': token || '',
   };
 };
 
@@ -201,7 +202,11 @@ class AdminApiService {
   private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = getAuthHeaders();
     console.log('Making authenticated request to:', url);
-    console.log('Request headers:', { ...headers, 'X-API-Key': headers['X-API-Key'] ? '***' : 'missing' });
+    console.log('Request headers:', { 
+      'Content-Type': headers['Content-Type'],
+      'X-API-Key': headers['X-API-Key'] ? '***' : 'missing',
+      'Authorization': headers['Authorization'] ? '***' : 'missing'
+    });
     
     const response = await fetch(url, {
       ...options,
@@ -211,6 +216,9 @@ class AdminApiService {
       },
       mode: 'cors',
     });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (response.status === 401) {
       console.error('Authentication failed - clearing stored credentials');
