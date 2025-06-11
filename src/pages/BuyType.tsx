@@ -438,5 +438,3 @@ const BuyType = () => {
 };
 
 export default BuyType;
-
-}
