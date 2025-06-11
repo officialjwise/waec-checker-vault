@@ -664,5 +664,3 @@ class AdminApiService {
 export const adminApi = new AdminApiService();
 
 export default adminApi;
-
-}
