@@ -1,5 +1,8 @@
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
+// API Key for admin requests - this should match your backend configuration
+const API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
+
 // Simple in-memory cache for API responses
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
 
@@ -44,19 +47,23 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   console.log('Getting auth headers - token exists:', !!token);
   console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'null');
+  console.log('Adding X-API-Key header for admin authorization');
   
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
+    'X-API-Key': API_KEY,
   };
 };
 
 const getMultipartAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   console.log('Getting multipart auth headers - token exists:', !!token);
+  console.log('Adding X-API-Key header for admin authorization');
   
   return {
     'Authorization': token ? `Bearer ${token}` : '',
+    'X-API-Key': API_KEY,
   };
 };
 
@@ -200,6 +207,7 @@ class AdminApiService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-API-Key': API_KEY,
         },
         mode: 'cors',
         body: JSON.stringify({ email, password })
@@ -629,3 +637,5 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
+
+}
