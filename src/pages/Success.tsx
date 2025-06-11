@@ -39,40 +39,81 @@ const Success = () => {
 
   // Process URL parameters on mount and verify payment
   useEffect(() => {
+    console.log("=== SUCCESS PAGE DEBUG START ===");
+    console.log("Full URL:", window.location.href);
+    console.log("Search params object:", Object.fromEntries(searchParams.entries()));
+    
     // Get all reference values and prioritize the trxref (Paystack reference)
     const trxref = searchParams.get("trxref");
     const reference = searchParams.get("reference");
     const status = searchParams.get("status");
     const backendOrderId = searchParams.get("order_id");
     
+    console.log("Extracted parameters:");
+    console.log("- trxref:", trxref);
+    console.log("- reference:", reference);
+    console.log("- status:", status);
+    console.log("- backendOrderId:", backendOrderId);
+    
     if (trxref || reference) {
       // Use trxref as the primary reference (Paystack's actual transaction reference)
       const paymentReference = trxref || reference;
+      console.log("Using payment reference:", paymentReference);
       
-      if (paymentReference && (status === "success" || status === "successful")) {
-        verifyPayment(paymentReference);
-      } else if (backendOrderId && status === "success") {
+      // Modified logic: If we have a payment reference, proceed with verification
+      // Don't require explicit status=success since some payment providers might not include it
+      if (paymentReference) {
+        if (status === "success" || status === "successful") {
+          console.log("Status explicitly indicates success, proceeding with verification");
+          verifyPayment(paymentReference);
+        } else if (!status) {
+          console.log("No status parameter found, but payment reference exists. Proceeding with verification assuming success.");
+          verifyPayment(paymentReference);
+        } else {
+          console.log("Status indicates failure or unknown:", status);
+          setVerificationError(`Payment status indicates failure: ${status}. Please contact support if you made a payment.`);
+          setIsLoading(false);
+        }
+      } else if (backendOrderId && (status === "success" || !status)) {
+        console.log("Using backend order ID for verification");
         // Handle direct success from backend redirect
         fetchOrderDetails(backendOrderId);
       } else {
+        console.log("Payment status is not confirmed or failed");
         setVerificationError("Payment status is not confirmed. Please contact support if you made a payment.");
         setIsLoading(false);
       }
     } else {
+      console.log("No payment reference found in URL");
       setVerificationError("No payment reference found. Please contact support if you made a payment.");
       setIsLoading(false);
     }
+    
+    console.log("=== SUCCESS PAGE DEBUG END ===");
   }, [searchParams]);
 
   const verifyPayment = async (reference: string) => {
+    console.log("=== PAYMENT VERIFICATION START ===");
+    console.log("Verifying payment with reference:", reference);
+    
     try {
       setIsLoading(true);
       setVerificationError("");
       setIsNetworkError(false);
       
+      console.log("Making API call to verify payment...");
       const response = await clientApi.verifyPayment(reference);
+      console.log("Payment verification response:", response);
       
       if (response.status === "success" && response.checkers && response.checkers.length > 0) {
+        console.log("Payment verification successful!");
+        console.log("Order details:");
+        console.log("- Order ID:", response.order_id);
+        console.log("- WAEC Type:", response.waec_type);
+        console.log("- Quantity:", response.quantity);
+        console.log("- Phone:", response.phone_number);
+        console.log("- Checkers count:", response.checkers.length);
+        
         setOrderId(response.order_id);
         setWaecType(response.waec_type.toLowerCase());
         setQuantity(response.quantity);
@@ -99,17 +140,26 @@ const Success = () => {
         // Clean up URL
         navigate("/success", { replace: true });
       } else {
+        console.log("Payment verification failed - invalid response:");
+        console.log("- Status:", response.status);
+        console.log("- Checkers:", response.checkers);
         throw new Error("Payment verification failed or no checkers were generated");
       }
       
     } catch (error) {
+      console.log("=== PAYMENT VERIFICATION ERROR ===");
+      console.error("Error details:", error);
+      
       const errorMessage = error instanceof Error ? error.message : "Failed to verify payment";
+      console.log("Error message:", errorMessage);
       
       // Check if it's a network error
-      if (errorMessage.includes("Network error") || errorMessage.includes("Failed to fetch")) {
+      if (errorMessage.includes("Network error") || errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError")) {
+        console.log("Detected network error");
         setIsNetworkError(true);
         setVerificationError("Unable to connect to our servers. This appears to be a temporary issue. Please try refreshing the page or contact support.");
       } else {
+        console.log("Detected application error");
         setVerificationError(errorMessage);
       }
       
@@ -120,40 +170,54 @@ const Success = () => {
       });
     } finally {
       setIsLoading(false);
+      console.log("=== PAYMENT VERIFICATION END ===");
     }
   };
 
   const fetchOrderDetails = async (orderIdParam: string) => {
+    console.log("=== ORDER DETAILS FETCH START ===");
+    console.log("Fetching order details for:", orderIdParam);
+    
     try {
       setIsLoading(true);
       // This would require an additional endpoint to fetch order details
       // For now, we'll extract basic info from URL parameters
       setOrderId(orderIdParam);
       
+      console.log("Order details set successfully");
+      
       toast({
         title: "Order Processed",
         description: "Your order has been processed successfully.",
       });
     } catch (error) {
+      console.log("=== ORDER DETAILS FETCH ERROR ===");
+      console.error("Error:", error);
       setVerificationError("Failed to fetch order details");
     } finally {
       setIsLoading(false);
+      console.log("=== ORDER DETAILS FETCH END ===");
     }
   };
 
   const handlePrint = () => {
+    console.log("Print button clicked");
     window.print();
   };
 
   const toggleViewMode = () => {
-    setViewMode(viewMode === "grid" ? "list" : "grid");
+    const newMode = viewMode === "grid" ? "list" : "grid";
+    console.log("Toggling view mode from", viewMode, "to", newMode);
+    setViewMode(newMode);
   };
 
   const handleRetry = () => {
+    console.log("Retry button clicked - reloading page");
     window.location.reload();
   };
 
   if (verificationError) {
+    console.log("Rendering verification error state:", verificationError);
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50">
         <div className="max-w-md mx-auto text-center p-8">
@@ -180,6 +244,7 @@ const Success = () => {
   }
 
   if (isLoading) {
+    console.log("Rendering loading state");
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
         <div className="text-center">
@@ -191,6 +256,7 @@ const Success = () => {
   }
 
   if (!checkers || checkers.length === 0) {
+    console.log("Rendering no checkers state");
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50">
         <div className="max-w-md mx-auto text-center p-8">
@@ -204,6 +270,8 @@ const Success = () => {
     );
   }
 
+  console.log("Rendering success state with", checkers.length, "checkers");
+  
   return (
     <>
       {/* Enhanced Print styles for better PDF rendering */}
