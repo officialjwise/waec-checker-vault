@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
 import AdminCharts from '@/components/AdminCharts';
@@ -29,6 +28,7 @@ const Summary = () => {
       ]);
       
       console.log('Summary data fetched:', inventoryData);
+      console.log('Paid orders fetched:', ordersData);
       setInventory(inventoryData);
       setPaidOrders(ordersData);
 
@@ -82,23 +82,38 @@ const Summary = () => {
     }
   };
 
+  // Calculate revenue for an order - prioritize order.amount, fallback to quantity * price
+  const calculateOrderRevenue = (order: Order) => {
+    // If order has an amount field and it's valid, use it
+    if (order.amount && order.amount > 0) {
+      return order.amount;
+    }
+    // Otherwise calculate from quantity and price
+    return order.quantity * getPrice(order.waec_type);
+  };
+
   // Calculate total revenue from ONLY paid orders
   const totalRevenue = paidOrders.reduce((acc, order) => {
-    return acc + (order.amount || (order.quantity * getPrice(order.waec_type)));
+    const orderRevenue = calculateOrderRevenue(order);
+    console.log(`Order ${order.id}: quantity=${order.quantity}, waec_type=${order.waec_type}, amount=${order.amount}, calculated_revenue=${orderRevenue}`);
+    return acc + orderRevenue;
   }, 0);
+
+  console.log('Total revenue calculated:', totalRevenue);
+  console.log('Number of paid orders:', paidOrders.length);
 
   // Prepare chart data - only use paid orders for revenue calculation
   const chartData = inventory.byWaecType.map((item) => {
     const assignedCount = assignedCheckers[item.waec_type] || 0;
-    const waecRevenue = paidOrders
-      .filter(order => order.waec_type === item.waec_type)
-      .reduce((acc, order) => acc + (order.amount || (order.quantity * getPrice(item.waec_type))), 0);
-    const waecOrders = paidOrders.filter(order => order.waec_type === item.waec_type).length;
+    const waecOrders = paidOrders.filter(order => order.waec_type === item.waec_type);
+    const waecRevenue = waecOrders.reduce((acc, order) => acc + calculateOrderRevenue(order), 0);
+    
+    console.log(`${item.waec_type}: ${waecOrders.length} orders, revenue: ${waecRevenue}`);
     
     return {
       waecType: item.waec_type,
       revenue: waecRevenue,
-      orders: waecOrders,
+      orders: waecOrders.length,
       available: item.available || 0,
       total: item.total || 0,
     };
@@ -167,7 +182,7 @@ const Summary = () => {
         <StatCard
           title="Total Revenue"
           value={`₵${totalRevenue.toLocaleString()}`}
-          subtitle="From paid orders"
+          subtitle={`From ${paidOrders.length} paid orders`}
           icon={DollarSign}
           color="purple"
         />
@@ -191,9 +206,8 @@ const Summary = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {inventory.byWaecType.map((item) => {
               const assignedCount = assignedCheckers[item.waec_type] || 0;
-              const waecRevenue = paidOrders
-                .filter(order => order.waec_type === item.waec_type)
-                .reduce((acc, order) => acc + (order.amount || (order.quantity * getPrice(order.waec_type))), 0);
+              const waecOrders = paidOrders.filter(order => order.waec_type === item.waec_type);
+              const waecRevenue = waecOrders.reduce((acc, order) => acc + calculateOrderRevenue(order), 0);
               
               return (
                 <div key={item.waec_type} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
@@ -240,6 +254,10 @@ const Summary = () => {
                         <span className="font-medium text-purple-600">
                           ₵{waecRevenue.toLocaleString()}
                         </span>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>Orders:</span>
+                        <span>{waecOrders.length}</span>
                       </div>
                     </div>
                   </div>
