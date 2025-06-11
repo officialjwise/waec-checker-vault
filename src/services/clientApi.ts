@@ -39,25 +39,87 @@ class ClientApiService {
   // Check availability of checkers with optional waec_type filter
   async checkAvailability(waecType?: string): Promise<CheckerAvailability> {
     try {
-      const url = new URL(`${BASE_URL}/checkers/availability`);
+      let url = `${BASE_URL}/checkers/availability`;
+      
+      // Try different parameter formats to handle potential API variations
       if (waecType) {
-        url.searchParams.append('waec_type', waecType);
+        // First try with waec_type parameter
+        url += `?waec_type=${encodeURIComponent(waecType)}`;
       }
 
-      const response = await fetch(url.toString(), {
+      console.log('Making availability request to:', url);
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
+      console.log('Availability response status:', response.status);
+      console.log('Availability response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`Failed to check availability: ${response.status}`);
+        // Try to get the error response body for more details
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorText = await response.text();
+          console.log('Error response body:', errorText);
+          
+          // Try to parse as JSON first
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || errorText;
+          } catch {
+            // If not JSON, use the text as is
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          console.log('Could not parse error response:', parseError);
+        }
+
+        // Handle specific 400 error
+        if (response.status === 400) {
+          console.log('400 Bad Request - trying alternative endpoint format');
+          
+          // Try without the waec_type parameter as fallback
+          if (waecType) {
+            console.log('Retrying without waec_type parameter');
+            try {
+              const fallbackResponse = await fetch(`${BASE_URL}/checkers/availability`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              if (fallbackResponse.ok) {
+                console.log('Fallback request succeeded');
+                return await fallbackResponse.json();
+              }
+            } catch (fallbackError) {
+              console.log('Fallback request also failed:', fallbackError);
+            }
+          }
+          
+          throw new Error(`Bad Request: ${errorMessage}. The API may not support filtering by exam type or the parameter format may be incorrect.`);
+        }
+
+        throw new Error(`Failed to check availability: ${response.status} - ${errorMessage}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('Availability check result:', result);
+      return result;
     } catch (error) {
       console.error('Error checking availability:', error);
+      
+      // Provide more specific error handling
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        throw new Error('Network connection failed. Please check your internet connection and try again.');
+      }
+      
+      // Re-throw the error as is if it's already a meaningful error
       throw error;
     }
   }
@@ -75,9 +137,25 @@ class ClientApiService {
         body: JSON.stringify(orderData),
       });
 
+      console.log('Order initiation response status:', response.status);
+
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to initiate order: ${response.status} - ${errorText}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorText = await response.text();
+          console.log('Order error response body:', errorText);
+          
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || errorText;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          console.log('Could not parse order error response:', parseError);
+        }
+
+        throw new Error(`Failed to initiate order: ${response.status} - ${errorMessage}`);
       }
 
       return await response.json();
@@ -99,9 +177,25 @@ class ClientApiService {
         },
       });
 
+      console.log('Payment verification response status:', response.status);
+
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to verify payment: ${response.status} - ${errorText}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorText = await response.text();
+          console.log('Payment verification error response body:', errorText);
+          
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.message || errorJson.error || errorText;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+        } catch (parseError) {
+          console.log('Could not parse payment verification error response:', parseError);
+        }
+
+        throw new Error(`Failed to verify payment: ${response.status} - ${errorMessage}`);
       }
 
       return await response.json();
