@@ -412,10 +412,7 @@ class AdminApiService {
       
       // Try multiple possible endpoints
       const endpoints = [
-        `${BASE_URL}/admin/checkers/upload`,
-        `${BASE_URL}/admin/upload-checkers`,
-        `${BASE_URL}/checkers/upload`,
-        `${BASE_URL}/upload/checkers`
+        `${BASE_URL}/admin/checkers`
       ];
       
       let lastError = null;
