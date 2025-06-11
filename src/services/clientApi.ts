@@ -36,10 +36,15 @@ export interface VerifyPaymentResponse {
 }
 
 class ClientApiService {
-  // Check availability of checkers
-  async checkAvailability(): Promise<CheckerAvailability> {
+  // Check availability of checkers with optional waec_type filter
+  async checkAvailability(waecType?: string): Promise<CheckerAvailability> {
     try {
-      const response = await fetch(`${BASE_URL}/checkers/availability`, {
+      const url = new URL(`${BASE_URL}/checkers/availability`);
+      if (waecType) {
+        url.searchParams.append('waec_type', waecType);
+      }
+
+      const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

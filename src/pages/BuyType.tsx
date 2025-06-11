@@ -47,13 +47,14 @@ const BuyType = () => {
   useEffect(() => {
     const checkAvailability = async () => {
       try {
-        const availabilityResult = await clientApi.checkAvailability();
+        const waecTypeFormatted = clientApi.mapWaecType(waecType || '');
+        const availabilityResult = await clientApi.checkAvailability(waecTypeFormatted);
         setAvailabilityStatus(availabilityResult.available ? 'available' : 'unavailable');
         
         if (!availabilityResult.available) {
           toast({
             title: "Service Temporarily Unavailable",
-            description: availabilityResult.message || "Checkers are currently not available. Please try again later.",
+            description: availabilityResult.message || `${examTypeNames[waecType]} checkers are currently not available. Please try again later.`,
             variant: "destructive"
           });
         }
@@ -68,8 +69,10 @@ const BuyType = () => {
       }
     };
 
-    checkAvailability();
-  }, [toast]);
+    if (waecType) {
+      checkAvailability();
+    }
+  }, [toast, waecType]);
 
   useEffect(() => {
     if (location.state?.prefillQuantity) {
@@ -228,7 +231,7 @@ const BuyType = () => {
             <Alert className="mb-6 bg-blue-50 border-blue-200">
               <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
               <AlertDescription className="text-blue-800">
-                Checking service availability...
+                Checking {examTypeNames[waecType]} checker availability...
               </AlertDescription>
             </Alert>
           )}
@@ -237,7 +240,7 @@ const BuyType = () => {
             <Alert className="mb-6 bg-green-50 border-green-200">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800 font-medium">
-                Checkers are available
+                {examTypeNames[waecType]} checkers are available
               </AlertDescription>
             </Alert>
           )}
@@ -246,7 +249,7 @@ const BuyType = () => {
             <Alert className="mb-6 bg-red-50 border-red-200">
               <AlertCircle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-800 font-medium">
-                Service Currently Unavailable - Checkers are temporarily not available. Please try again later.
+                {examTypeNames[waecType]} checkers are currently unavailable. Please try again later.
               </AlertDescription>
             </Alert>
           )}
@@ -435,3 +438,5 @@ const BuyType = () => {
 };
 
 export default BuyType;
+
+}
