@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 export interface CheckerAvailability {
@@ -20,19 +19,21 @@ export interface OrderResponse {
 
 export interface VerifyPaymentResponse {
   message: string;
-  order_id: string;
-  waec_type: string;
-  quantity: number;
-  phone_number: string;
-  checkers: Array<{
-    id: string;
-    serial: string;
-    pin: string;
-    waec_type: string;
-    created_at: string;
-  }>;
-  redirect_url: string;
   status: string;
+  order: {
+    order_id: string;
+    waec_type: string;
+    quantity: number;
+    phone_number: string;
+    checkers: Array<{
+      id: string;
+      serial: string;
+      pin: string;
+      waec_type: string;
+      created_at: string;
+    }>;
+  };
+  redirect_url: string;
 }
 
 class ClientApiService {
