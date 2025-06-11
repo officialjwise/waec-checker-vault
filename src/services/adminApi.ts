@@ -1,15 +1,50 @@
+
 const BASE_URL = 'https://waec-backend.onrender.com/api';
-const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
+
+// Simple in-memory cache for API responses
+const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
+
+const CACHE_TTL = {
+  orders: 5 * 60 * 1000, // 5 minutes
+  checkers: 10 * 60 * 1000, // 10 minutes
+  inventory: 2 * 60 * 1000, // 2 minutes
+  stats: 1 * 60 * 1000, // 1 minute
+};
+
+// Cache utility functions
+const getCachedData = (key: string) => {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
+    console.log(`Cache hit for ${key}`);
+    return cached.data;
+  }
+  if (cached) {
+    cache.delete(key);
+  }
+  return null;
+};
+
+const setCachedData = (key: string, data: any, ttl: number) => {
+  cache.set(key, { data, timestamp: Date.now(), ttl });
+};
+
+const clearCache = (pattern?: string) => {
+  if (pattern) {
+    for (const key of cache.keys()) {
+      if (key.includes(pattern)) {
+        cache.delete(key);
+      }
+    }
+  } else {
+    cache.clear();
+  }
+};
 
 // Get the admin token from localStorage
 const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
-  console.log('Getting auth headers, token exists:', !!token);
-  console.log('Full token value:', token ? token.substring(0, 50) + '...' : 'null');
-  console.log('API Key being used:', ADMIN_API_KEY ? ADMIN_API_KEY.substring(0, 10) + '...' : 'missing');
   return {
     'Content-Type': 'application/json',
-    'X-API-Key': ADMIN_API_KEY,
     'Authorization': token ? `Bearer ${token}` : '',
   };
 };
@@ -17,7 +52,6 @@ const getAuthHeaders = () => {
 const getMultipartAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   return {
-    'X-API-Key': ADMIN_API_KEY,
     'Authorization': token ? `Bearer ${token}` : '',
   };
 };
@@ -157,9 +191,6 @@ class AdminApiService {
   // Admin Login - updated with better error handling
   async login(email: string, password: string): Promise<{ access_token: string }> {
     try {
-      console.log('Attempting login to:', `${BASE_URL}/auth/admin/login`);
-      console.log('Login payload:', { email, password: '***' });
-      
       const response = await fetch(`${BASE_URL}/auth/admin/login`, {
         method: 'POST',
         headers: {
@@ -170,20 +201,14 @@ class AdminApiService {
         body: JSON.stringify({ email, password })
       });
 
-      console.log('Login response status:', response.status);
-      console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Login failed with response:', errorText);
         throw new Error(`Login failed: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Login successful, received data:', { ...data, access_token: '***' });
       return data;
     } catch (error) {
-      console.error('Login error details:', error);
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
         throw new Error('Network error: Unable to connect to the server. Please check your internet connection and try again.');
       }
@@ -193,56 +218,33 @@ class AdminApiService {
 
   // Logout functionality
   async logout(): Promise<void> {
-    console.log('Logging out - clearing credentials');
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_authenticated');
+    clearCache();
   }
 
   // Check if admin is authenticated
   isAuthenticated(): boolean {
     const token = localStorage.getItem('admin_token');
     const authenticated = localStorage.getItem('admin_authenticated');
-    console.log('Checking authentication - token exists:', !!token, 'authenticated flag:', authenticated);
     return !!(token && authenticated === 'true');
   }
 
   // Enhanced API call with better auth handling
   private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = getAuthHeaders();
-    console.log('Making authenticated request to:', url);
-    console.log('Request headers being sent:', { 
-      'Content-Type': headers['Content-Type'],
-      'X-API-Key': headers['X-API-Key'] ? headers['X-API-Key'].substring(0, 10) + '...' : 'missing',
-      'Authorization': headers['Authorization'] ? headers['Authorization'].substring(0, 20) + '...' : 'missing'
-    });
-    
-    // Log the exact headers that will be sent
-    const finalHeaders = {
-      ...headers,
-      ...options.headers,
-    };
-    console.log('Final headers object:', finalHeaders);
     
     const response = await fetch(url, {
       ...options,
-      headers: finalHeaders,
+      headers: {
+        ...headers,
+        ...options.headers,
+      },
       mode: 'cors',
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
-    // If we get a 401, let's see what the response body says before clearing credentials
+    // If we get a 401, clear credentials and throw error
     if (response.status === 401) {
-      let errorBody = '';
-      try {
-        errorBody = await response.text();
-        console.error('401 response body:', errorBody);
-      } catch (e) {
-        console.error('Could not read 401 response body:', e);
-      }
-      
-      console.error('Authentication failed - clearing stored credentials');
       this.logout();
       throw new Error('Authentication failed. Please log in again.');
     }
@@ -250,8 +252,12 @@ class AdminApiService {
     return response;
   }
 
-  // Orders API methods - updated to return just the data array
+  // Orders API methods - updated with caching and status synchronization
   async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
+    const cacheKey = `orders_${JSON.stringify(filters)}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) queryParams.append(key, value.toString());
@@ -265,19 +271,23 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Raw orders API response:', responseData);
-      
       const ordersData = responseData.data || [];
-      console.log('Extracted orders data:', ordersData);
       
-      return ordersData;
+      // Synchronize order status with payment status
+      const synchronizedOrders = ordersData.map((order: Order) => this.synchronizeOrderStatus(order));
+      
+      setCachedData(cacheKey, synchronizedOrders, CACHE_TTL.orders);
+      return synchronizedOrders;
     } catch (error) {
-      console.error('Error in getOrders:', error);
       throw error;
     }
   }
 
   async getOrderDetail(orderId: string): Promise<OrderDetail> {
+    const cacheKey = `order_detail_${orderId}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders/${orderId}`);
 
@@ -286,12 +296,10 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Order detail response:', responseData);
       
-      // Handle the nested response structure where data is an array with order and checkers
+      // Handle the nested response structure
       let orderData;
       if (Array.isArray(responseData.data) && responseData.data.length > 0) {
-        // Extract the order and checkers from the nested structure
         const firstItem = responseData.data[0];
         if (firstItem.order && firstItem.checkers) {
           orderData = {
@@ -305,12 +313,35 @@ class AdminApiService {
         orderData = responseData.data || responseData;
       }
       
-      console.log('Processed order data:', orderData);
-      return orderData;
+      // Synchronize order status with payment status
+      const synchronizedOrder = this.synchronizeOrderStatus(orderData);
+      
+      setCachedData(cacheKey, synchronizedOrder, CACHE_TTL.orders);
+      return synchronizedOrder;
     } catch (error) {
-      console.error('Error in getOrderDetail:', error);
       throw error;
     }
+  }
+
+  // Synchronize order status with payment status
+  private synchronizeOrderStatus(order: Order | OrderDetail): Order | OrderDetail {
+    const paymentStatus = order.payment_status || 'unpaid';
+    let orderStatus = order.status || 'pending';
+
+    // If payment is paid but order is pending, update to completed
+    if (paymentStatus === 'paid' && orderStatus === 'pending') {
+      orderStatus = 'completed';
+    }
+    
+    // If payment is unpaid but order is completed/paid, update to pending
+    if (paymentStatus === 'unpaid' && (orderStatus === 'completed' || orderStatus === 'paid')) {
+      orderStatus = 'pending';
+    }
+
+    return {
+      ...order,
+      status: orderStatus
+    };
   }
 
   async updateOrderStatus(orderId: string, status: string): Promise<Order> {
@@ -324,15 +355,23 @@ class AdminApiService {
         throw new Error(`Failed to update order status: ${response.status}`);
       }
 
+      // Clear related cache entries
+      clearCache('orders');
+      clearCache('order_detail');
+      clearCache('stats');
+
       return response.json();
     } catch (error) {
-      console.error('Error in updateOrderStatus:', error);
       throw error;
     }
   }
 
-  // Checkers API methods - updated with better error handling
+  // Checkers API methods - updated with caching
   async getCheckers(filters: CheckerFilters = {}): Promise<Checker[]> {
+    const cacheKey = `checkers_${JSON.stringify(filters)}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
@@ -346,96 +385,44 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Checkers response:', responseData);
-      
       const checkersData = responseData.data || responseData || [];
+      
+      setCachedData(cacheKey, checkersData, CACHE_TTL.checkers);
       return checkersData;
     } catch (error) {
-      console.error('Error in getCheckers:', error);
       throw error;
     }
   }
 
-  // New method to get assigned/unassigned checkers by WAEC type
   async getCheckersByType(waecType: string, assigned: boolean): Promise<Checker[]> {
     return this.getCheckers({ waec_type: waecType, assigned });
   }
 
-  async previewCheckers(file: File): Promise<any[]> {
-    const formData = new FormData();
-    formData.append('file', file);
-
+  async uploadCheckers(file: File): Promise<UploadResult> {
     try {
-      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/preview`, {
+      // Use FormData for file upload as expected by the backend
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/upload`, {
         method: 'POST',
         headers: getMultipartAuthHeaders(),
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to preview checkers: ${response.status}`);
-      }
-
-      return response.json();
-    } catch (error) {
-      console.error('Error in previewCheckers:', error);
-      throw error;
-    }
-  }
-
-  async uploadCheckers(file: File): Promise<UploadResult> {
-    try {
-      console.log('Uploading to endpoint:', `${BASE_URL}/admin/checkers`);
-      
-      // Read the file content and parse CSV to JSON
-      const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
-        throw new Error('File must contain at least a header row and one data row');
-      }
-
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const requiredHeaders = ['serial', 'pin', 'waec_type'];
-      
-      const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-      if (missingHeaders.length > 0) {
-        throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
-      }
-
-      const checkers = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
-        return {
-          serial: values[headers.indexOf('serial')] || '',
-          pin: values[headers.indexOf('pin')] || '',
-          waec_type: values[headers.indexOf('waec_type')] || ''
-        };
-      });
-
-      // Send as JSON instead of FormData
-      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers`, {
-        method: 'POST',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ checkers }),
-      });
-
-      console.log('Upload response status:', response.status);
-      console.log('Upload response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
         const errorText = await response.text();
-        console.error('Upload failed with response:', errorText);
         throw new Error(`Failed to upload checkers: ${response.status} - ${errorText}`);
       }
 
+      // Clear related cache entries
+      clearCache('checkers');
+      clearCache('inventory');
+      clearCache('stats');
+
       const result = await response.json();
-      console.log('Upload successful, result:', result);
       return result;
     } catch (error) {
-      console.error('Error in uploadCheckers:', error);
       throw error;
     }
   }
@@ -449,8 +436,12 @@ class AdminApiService {
       if (!response.ok) {
         throw new Error(`Failed to delete checker: ${response.status}`);
       }
+
+      // Clear related cache entries
+      clearCache('checkers');
+      clearCache('inventory');
+      clearCache('stats');
     } catch (error) {
-      console.error('Error in deleteChecker:', error);
       throw error;
     }
   }
@@ -466,15 +457,23 @@ class AdminApiService {
         throw new Error(`Failed to bulk delete checkers: ${response.status}`);
       }
 
+      // Clear related cache entries
+      clearCache('checkers');
+      clearCache('inventory');
+      clearCache('stats');
+
       return response.json();
     } catch (error) {
-      console.error('Error in bulkDeleteCheckers:', error);
       throw error;
     }
   }
 
-  // OTP Requests API methods - updated with better error handling
+  // OTP Requests API methods - updated with caching
   async getOtpRequests(filters: OtpFilters = {}): Promise<OtpRequest[]> {
+    const cacheKey = `otp_requests_${JSON.stringify(filters)}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
@@ -488,18 +487,21 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('OTP requests response:', responseData);
-      
       const otpData = responseData.data || responseData || [];
+      
+      setCachedData(cacheKey, otpData, CACHE_TTL.orders);
       return otpData;
     } catch (error) {
-      console.error('Error in getOtpRequests:', error);
       throw error;
     }
   }
 
-  // Inventory API method - updated to handle new structure
+  // Inventory API method - updated with caching
   async getInventory(): Promise<InventoryResponse> {
+    const cacheKey = 'inventory';
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/inventory`);
 
@@ -508,19 +510,21 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Inventory response:', responseData);
-      
-      // Extract the data from the response object
       const inventoryData = responseData.data || { byWaecType: [], lowStock: [] };
+      
+      setCachedData(cacheKey, inventoryData, CACHE_TTL.inventory);
       return inventoryData;
     } catch (error) {
-      console.error('Error in getInventory:', error);
       throw error;
     }
   }
 
-  // Admin Stats API method - updated with better error handling
+  // Admin Stats API method - updated with caching
   async getAdminStats(): Promise<AdminStats> {
+    const cacheKey = 'admin_stats';
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/stats`);
 
@@ -529,19 +533,21 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Admin stats response:', responseData);
-      
-      // Extract the data from the response object
       const statsData = responseData.data || responseData;
+      
+      setCachedData(cacheKey, statsData, CACHE_TTL.stats);
       return statsData;
     } catch (error) {
-      console.error('Error in getAdminStats:', error);
       throw error;
     }
   }
 
-  // Logs API method - updated with better error handling
+  // Logs API method - updated with caching
   async getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
+    const cacheKey = `logs_${JSON.stringify(filters)}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
@@ -555,14 +561,22 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Logs response:', responseData);
-      
       const logsData = responseData.data || responseData || [];
+      
+      setCachedData(cacheKey, Array.isArray(logsData) ? logsData : [], CACHE_TTL.orders);
       return Array.isArray(logsData) ? logsData : [];
     } catch (error) {
-      console.error('Error in getLogs:', error);
       throw error;
     }
+  }
+
+  // Cache management methods
+  clearAllCache(): void {
+    clearCache();
+  }
+
+  clearCacheByPattern(pattern: string): void {
+    clearCache(pattern);
   }
 
   // Utility methods for data validation

@@ -26,7 +26,6 @@ const Orders = () => {
   const fetchOrders = async (filters: OrderFilters = {}) => {
     try {
       setLoading(true);
-      console.log('Fetching orders with filters:', filters);
       
       const paginatedFilters = {
         ...filters,
@@ -35,8 +34,6 @@ const Orders = () => {
       };
       
       const data = await adminApi.getOrders(paginatedFilters);
-      console.log('Orders fetched:', data);
-      
       const validatedOrders = data.map(order => adminApi.validateOrderData(order));
       setOrders(validatedOrders);
       
@@ -46,7 +43,6 @@ const Orders = () => {
         setTotalPages(1);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
       toast({
         title: "Error",
         description: "Failed to fetch orders. Please try again.",
@@ -101,9 +97,7 @@ const Orders = () => {
 
   const handleViewOrder = async (order: Order) => {
     try {
-      console.log('Fetching order detail for:', order.id);
       const orderDetail = await adminApi.getOrderDetail(order.id);
-      console.log('Order detail fetched:', orderDetail);
       
       // Ensure we have a complete order detail object
       const completeOrderDetail = {
@@ -117,7 +111,6 @@ const Orders = () => {
       setSelectedOrder(completeOrderDetail);
       setIsModalOpen(true);
     } catch (error) {
-      console.error('Error fetching order detail:', error);
       toast({
         title: "Error",
         description: "Failed to fetch order details. Please try again.",
@@ -138,6 +131,16 @@ const Orders = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleRefresh = () => {
+    // Clear cache and fetch fresh data
+    adminApi.clearCacheByPattern('orders');
+    fetchOrders();
+    toast({
+      title: "Refreshed",
+      description: "Orders data has been refreshed from the server.",
+    });
   };
 
   if (loading) {
@@ -161,7 +164,7 @@ const Orders = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Orders Management</h1>
         <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-          <Button variant="outline" size="sm" onClick={() => fetchOrders()}>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
