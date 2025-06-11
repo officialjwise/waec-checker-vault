@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Phone, Mail, Calendar, Package, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -34,12 +34,6 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       processing: 'bg-purple-100 text-purple-800 border-purple-200'
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
-  };
-
-  const getPaymentColor = (paymentStatus: string) => {
-    return paymentStatus === 'paid'
-      ? 'bg-green-100 text-green-800 border-green-200' 
-      : 'bg-red-100 text-red-800 border-red-200';
   };
 
   const calculateTotal = (quantity: number, waecType: string) => {
@@ -171,77 +165,42 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Status & Payment Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Order Status */}
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-purple-600" />
-                Order Status
-              </h3>
-              <div className="space-y-4">
-                <div className="bg-white rounded-lg p-4 shadow-sm">
-                  <p className="text-sm text-gray-600 mb-2">Current Status</p>
-                  <div className="flex items-center space-x-2">
-                    <span className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border ${getStatusColor(order.status)}`}>
-                      {order.status === 'completed' ? (
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                      ) : (
-                        <Clock className="h-4 w-4 mr-1" />
-                      )}
-                      {formatStatusText(order.status)}
-                    </span>
-                    {order.payment_status === 'paid' && order.status === 'pending' && (
-                      <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
-                        Status synced with payment
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white rounded-lg p-3 shadow-sm">
-                    <p className="text-xs text-gray-600">Created</p>
-                    <p className="text-sm font-medium">{formatDate(order.created_at)}</p>
-                  </div>
-                  <div className="bg-white rounded-lg p-3 shadow-sm">
-                    <p className="text-xs text-gray-600">Updated</p>
-                    <p className="text-sm font-medium">{formatDate(order.updated_at)}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Information */}
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2 text-blue-600" />
-                Payment Information
-              </h3>
-              <div className="space-y-4">
-                <div className="bg-white rounded-lg p-4 shadow-sm">
-                  <p className="text-sm text-gray-600 mb-2">Payment Status</p>
-                  <span className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border ${getPaymentColor(order.payment_status || 'unpaid')}`}>
-                    {order.payment_status === 'paid' ? (
+          {/* Order Status - single section */}
+          <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+            <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+              <Calendar className="h-5 w-5 mr-2 text-purple-600" />
+              Order Status
+            </h3>
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-gray-600 mb-2">Current Status</p>
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border ${getStatusColor(order.status)}`}>
+                    {order.status === 'completed' ? (
                       <CheckCircle className="h-4 w-4 mr-1" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 mr-1" />
+                      <Clock className="h-4 w-4 mr-1" />
                     )}
-                    {order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
+                    {formatStatusText(order.status)}
                   </span>
                 </div>
-                {order.payment_method && (
-                  <div className="bg-white rounded-lg p-3 shadow-sm">
-                    <p className="text-sm text-gray-600">Payment Method</p>
-                    <p className="font-medium">{order.payment_method}</p>
-                  </div>
-                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-white rounded-lg p-3 shadow-sm">
-                  <p className="text-sm text-gray-600">Amount</p>
-                  <p className="font-bold text-green-600 text-xl">
-                    ₵{calculateTotal(order.quantity || 0, order.waec_type || 'WASSCE').toLocaleString()}
-                  </p>
+                  <p className="text-xs text-gray-600">Created</p>
+                  <p className="text-sm font-medium">{formatDate(order.created_at)}</p>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm">
+                  <p className="text-xs text-gray-600">Updated</p>
+                  <p className="text-sm font-medium">{formatDate(order.updated_at)}</p>
                 </div>
               </div>
+              {order.payment_method && (
+                <div className="bg-white rounded-lg p-3 shadow-sm">
+                  <p className="text-sm text-gray-600">Payment Method</p>
+                  <p className="font-medium">{order.payment_method}</p>
+                </div>
+              )}
             </div>
           </div>
 

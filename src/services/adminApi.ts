@@ -1,7 +1,7 @@
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
-// API Key for admin requests - this should match your backend configuration
-const API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
+// Get API Key from environment variables
+const API_KEY = import.meta.env.VITE_API_KEY || '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
 // Simple in-memory cache for API responses
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -17,7 +17,6 @@ const CACHE_TTL = {
 const getCachedData = (key: string) => {
   const cached = cache.get(key);
   if (cached && Date.now() - cached.timestamp < cached.ttl) {
-    console.log(`Cache hit for ${key}`);
     return cached.data;
   }
   if (cached) {
@@ -42,12 +41,9 @@ const clearCache = (pattern?: string) => {
   }
 };
 
-// Get the admin token from localStorage
+// Get the admin token from localStorage - removed logging
 const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
-  console.log('Getting auth headers - token exists:', !!token);
-  console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'null');
-  console.log('Adding X-API-Key header for admin authorization');
   
   return {
     'Content-Type': 'application/json',
@@ -58,8 +54,6 @@ const getAuthHeaders = () => {
 
 const getMultipartAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
-  console.log('Getting multipart auth headers - token exists:', !!token);
-  console.log('Adding X-API-Key header for admin authorization');
   
   return {
     'Authorization': token ? `Bearer ${token}` : '',
@@ -82,7 +76,7 @@ export interface Order {
 }
 
 export interface OrderDetail extends Order {
-  checkers?: Checker[]; // Changed from required to optional
+  checkers?: Checker[];
   transaction_id?: string;
   payment_method?: string;
   notes?: string;
@@ -199,7 +193,7 @@ export interface AdminStats {
 }
 
 class AdminApiService {
-  // Admin Login - updated with better error handling
+  // Admin Login - removed logging
   async login(email: string, password: string): Promise<{ access_token: string }> {
     try {
       const response = await fetch(`${BASE_URL}/auth/admin/login`, {
@@ -219,7 +213,6 @@ class AdminApiService {
       }
 
       const data = await response.json();
-      console.log('Login response received, token preview:', data.access_token ? `${data.access_token.substring(0, 20)}...` : 'no token');
       return data;
     } catch (error) {
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -229,26 +222,21 @@ class AdminApiService {
     }
   }
 
-  // Logout functionality
   async logout(): Promise<void> {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('admin_authenticated');
     clearCache();
   }
 
-  // Check if admin is authenticated
   isAuthenticated(): boolean {
     const token = localStorage.getItem('admin_token');
     const authenticated = localStorage.getItem('admin_authenticated');
-    console.log('Checking authentication - token exists:', !!token, 'authenticated flag:', authenticated);
     return !!(token && authenticated === 'true');
   }
 
-  // Enhanced API call with better auth handling
+  // Enhanced API call - removed logging
   private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = getAuthHeaders();
-    console.log('Making authenticated request to:', url);
-    console.log('Request headers:', { ...headers, Authorization: headers.Authorization ? `Bearer ${headers.Authorization.substring(7, 27)}...` : 'missing' });
     
     const response = await fetch(url, {
       ...options,
@@ -259,11 +247,8 @@ class AdminApiService {
       mode: 'cors',
     });
 
-    console.log('Response status:', response.status);
-
     // If we get a 401, clear credentials and throw error
     if (response.status === 401) {
-      console.log('Received 401, clearing credentials');
       this.logout();
       throw new Error('Authentication failed. Please log in again.');
     }
@@ -271,7 +256,7 @@ class AdminApiService {
     return response;
   }
 
-  // Orders API methods - updated with caching and status synchronization
+  // Orders API methods - removed status synchronization that was forcing pending
   async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
     const cacheKey = `orders_${JSON.stringify(filters)}`;
     const cached = getCachedData(cacheKey);
@@ -292,11 +277,9 @@ class AdminApiService {
       const responseData = await response.json();
       const ordersData = responseData.data || [];
       
-      // Synchronize order status with payment status
-      const synchronizedOrders = ordersData.map((order: Order) => this.synchronizeOrderStatus(order));
-      
-      setCachedData(cacheKey, synchronizedOrders, CACHE_TTL.orders);
-      return synchronizedOrders;
+      // Return orders with their actual status from database
+      setCachedData(cacheKey, ordersData, CACHE_TTL.orders);
+      return ordersData;
     } catch (error) {
       throw error;
     }
@@ -332,41 +315,16 @@ class AdminApiService {
         orderData = responseData.data || responseData;
       }
       
-      // Synchronize order status with payment status
-      const synchronizedOrder = this.synchronizeOrderStatus(orderData);
-      
       // Ensure checkers property exists even if empty
-      if (!synchronizedOrder.checkers) {
-        synchronizedOrder.checkers = [];
+      if (!orderData.checkers) {
+        orderData.checkers = [];
       }
       
-      setCachedData(cacheKey, synchronizedOrder, CACHE_TTL.orders);
-      return synchronizedOrder;
+      setCachedData(cacheKey, orderData, CACHE_TTL.orders);
+      return orderData;
     } catch (error) {
       throw error;
     }
-  }
-
-  // Synchronize order status with payment status
-  private synchronizeOrderStatus<T extends Order | OrderDetail>(order: T): T {
-    const paymentStatus = order.payment_status || 'unpaid';
-    let orderStatus = order.status || 'pending';
-
-    // If payment is paid but order is pending, update to completed
-    if (paymentStatus === 'paid' && orderStatus === 'pending') {
-      orderStatus = 'completed';
-    }
-    
-    // If payment is unpaid but order is completed/paid, update to pending
-    if (paymentStatus === 'unpaid' && (orderStatus === 'completed' || orderStatus === 'paid')) {
-      orderStatus = 'pending';
-    }
-
-    // Create updated order without modifying original checkers property if it exists
-    return {
-      ...order,
-      status: orderStatus
-    };
   }
 
   async updateOrderStatus(orderId: string, status: string): Promise<Order> {
@@ -391,7 +349,6 @@ class AdminApiService {
     }
   }
 
-  // Checkers API methods - updated with caching
   async getCheckers(filters: CheckerFilters = {}): Promise<Checker[]> {
     const cacheKey = `checkers_${JSON.stringify(filters)}`;
     const cached = getCachedData(cacheKey);
@@ -425,7 +382,6 @@ class AdminApiService {
 
   async uploadCheckers(file: File): Promise<UploadResult> {
     try {
-      // Use FormData for file upload as expected by the backend
       const formData = new FormData();
       formData.append('file', file);
       
@@ -440,7 +396,6 @@ class AdminApiService {
         throw new Error(`Failed to upload checkers: ${response.status} - ${errorText}`);
       }
 
-      // Clear related cache entries
       clearCache('checkers');
       clearCache('inventory');
       clearCache('stats');
@@ -462,7 +417,6 @@ class AdminApiService {
         throw new Error(`Failed to delete checker: ${response.status}`);
       }
 
-      // Clear related cache entries
       clearCache('checkers');
       clearCache('inventory');
       clearCache('stats');
@@ -482,7 +436,6 @@ class AdminApiService {
         throw new Error(`Failed to bulk delete checkers: ${response.status}`);
       }
 
-      // Clear related cache entries
       clearCache('checkers');
       clearCache('inventory');
       clearCache('stats');
@@ -493,7 +446,6 @@ class AdminApiService {
     }
   }
 
-  // OTP Requests API methods - updated with caching
   async getOtpRequests(filters: OtpFilters = {}): Promise<OtpRequest[]> {
     const cacheKey = `otp_requests_${JSON.stringify(filters)}`;
     const cached = getCachedData(cacheKey);
@@ -521,7 +473,6 @@ class AdminApiService {
     }
   }
 
-  // Inventory API method - updated with caching
   async getInventory(): Promise<InventoryResponse> {
     const cacheKey = 'inventory';
     const cached = getCachedData(cacheKey);
@@ -544,7 +495,6 @@ class AdminApiService {
     }
   }
 
-  // Admin Stats API method - updated with caching
   async getAdminStats(): Promise<AdminStats> {
     const cacheKey = 'admin_stats';
     const cached = getCachedData(cacheKey);
@@ -567,7 +517,6 @@ class AdminApiService {
     }
   }
 
-  // Logs API method - updated with caching
   async getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
     const cacheKey = `logs_${JSON.stringify(filters)}`;
     const cached = getCachedData(cacheKey);
@@ -595,7 +544,6 @@ class AdminApiService {
     }
   }
 
-  // Cache management methods
   clearAllCache(): void {
     clearCache();
   }
@@ -604,7 +552,6 @@ class AdminApiService {
     clearCache(pattern);
   }
 
-  // Utility methods for data validation
   validateOrderData(order: any): Order {
     return {
       id: order.id || '',

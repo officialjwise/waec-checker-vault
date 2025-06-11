@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Eye, Phone, Mail, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,8 +33,8 @@ const Orders = () => {
       };
       
       const data = await adminApi.getOrders(paginatedFilters);
-      const validatedOrders = data.map(order => adminApi.validateOrderData(order));
-      setOrders(validatedOrders);
+      // Remove validation that was changing statuses
+      setOrders(data);
       
       if (data.length === itemsPerPage) {
         setTotalPages(Math.max(currentPage + 1, totalPages));
@@ -99,13 +98,10 @@ const Orders = () => {
     try {
       const orderDetail = await adminApi.getOrderDetail(order.id);
       
-      // Ensure we have a complete order detail object
+      // Use the detailed order data as-is from the API
       const completeOrderDetail: OrderDetail = {
-        ...order, // Use the existing order data as fallback
-        ...orderDetail, // Override with detailed data
-        status: orderDetail.status || order.status || 'pending',
-        payment_status: orderDetail.payment_status || order.payment_status || 'unpaid',
-        checkers: orderDetail.checkers || [] // Ensure checkers array exists
+        ...orderDetail,
+        checkers: orderDetail.checkers || []
       };
       
       setSelectedOrder(completeOrderDetail);
@@ -134,7 +130,6 @@ const Orders = () => {
   };
 
   const handleRefresh = () => {
-    // Clear cache and fetch fresh data
     adminApi.clearCacheByPattern('orders');
     fetchOrders();
     toast({
@@ -211,6 +206,8 @@ const Orders = () => {
             <option value="pending">Pending</option>
             <option value="paid">Paid</option>
             <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
+            <option value="processing">Processing</option>
           </select>
         </div>
       </div>
@@ -341,7 +338,6 @@ const Orders = () => {
         </div>
       )}
 
-      {/* Order Detail Modal */}
       <OrderDetailModal 
         order={selectedOrder}
         isOpen={isModalOpen}
