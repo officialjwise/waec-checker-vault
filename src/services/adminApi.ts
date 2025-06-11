@@ -329,7 +329,7 @@ class AdminApiService {
   }
 
   // Synchronize order status with payment status
-  private synchronizeOrderStatus(order: Order | OrderDetail): Order | OrderDetail {
+  private synchronizeOrderStatus<T extends Order | OrderDetail>(order: T): T {
     const paymentStatus = order.payment_status || 'unpaid';
     let orderStatus = order.status || 'pending';
 
@@ -343,6 +343,7 @@ class AdminApiService {
       orderStatus = 'pending';
     }
 
+    // Create updated order without modifying original checkers property if it exists
     return {
       ...order,
       status: orderStatus
