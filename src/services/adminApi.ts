@@ -326,12 +326,24 @@ class AdminApiService {
         orderData.checkers = [];
       }
       
-      // Validate that checkers have all required fields including PIN
+      // Debug: Log checker data to see what fields are missing
       if (orderData.checkers && Array.isArray(orderData.checkers)) {
+        console.log('Raw checker data from backend:', orderData.checkers);
+        orderData.checkers.forEach((checker: any, index: number) => {
+          console.log(`Checker ${index}:`, {
+            id: checker.id,
+            serial: checker.serial,
+            pin: checker.pin,
+            hasPin: checker.hasOwnProperty('pin'),
+            pinValue: checker.pin
+          });
+        });
+        
+        // Validate that checkers have all required fields including PIN
         orderData.checkers = orderData.checkers.map((checker: any) => ({
           id: checker.id || '',
           serial: checker.serial || '',
-          pin: checker.pin || '', // Ensure PIN is included
+          pin: checker.pin || '', // This will be empty if backend doesn't provide it
           waec_type: checker.waec_type || 'WASSCE',
           assigned: checker.assigned || false,
           order_id: checker.order_id,
@@ -339,6 +351,8 @@ class AdminApiService {
           created_at: checker.created_at || new Date().toISOString(),
           updated_at: checker.updated_at,
         }));
+        
+        console.log('Processed checker data:', orderData.checkers);
       }
       
       setCachedData(cacheKey, orderData, CACHE_TTL.orders);
@@ -650,3 +664,5 @@ class AdminApiService {
 export const adminApi = new AdminApiService();
 
 export default adminApi;
+
+}
