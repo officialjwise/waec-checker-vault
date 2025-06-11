@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Phone, Mail, Calendar, Package, CreditCard, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -311,5 +312,3 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 };
 
 export default OrderDetailModal;
-
-</edits_to_apply>
