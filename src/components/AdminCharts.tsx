@@ -176,7 +176,7 @@ const AdminCharts: React.FC<AdminChartsProps> = ({ data }) => {
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip 
               formatter={(value, name) => [
-                name === 'revenue' ? `₵${value.toLocaleString()}` : value, 
+                name === 'revenue' ? `₵${Number(value).toLocaleString()}` : value, 
                 name === 'revenue' ? 'Revenue' : 'Orders'
               ]}
               contentStyle={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}
@@ -227,7 +227,7 @@ const AdminCharts: React.FC<AdminChartsProps> = ({ data }) => {
                 <Cell key={`cell-${index}`} fill={entry.color} stroke="#ffffff" strokeWidth={2} />
               ))}
             </Pie>
-            <Tooltip formatter={(value) => [`₵${value.toLocaleString()}`, 'Revenue']} />
+            <Tooltip formatter={(value) => [`₵${Number(value).toLocaleString()}`, 'Revenue']} />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -288,8 +288,8 @@ const AdminCharts: React.FC<AdminChartsProps> = ({ data }) => {
             <YAxis tick={{ fontSize: 12 }} />
             <Tooltip 
               formatter={(value, name) => [
-                name === 'efficiency' ? `${value.toFixed(1)}%` : 
-                name === 'profitability' ? `₵${value.toFixed(2)}` : value,
+                name === 'efficiency' ? `${Number(value).toFixed(1)}%` : 
+                name === 'profitability' ? `₵${Number(value).toFixed(2)}` : value,
                 name === 'efficiency' ? 'Utilization Rate' :
                 name === 'profitability' ? 'Avg Revenue/Order' : 'Total Orders'
               ]}

@@ -120,7 +120,10 @@ const Dashboard = () => {
       subtitle: 'From completed orders',
       icon: DollarSign,
       color: 'purple' as const,
-      trend: '+12.5%'
+      trend: {
+        value: '12.5%',
+        direction: 'up' as const
+      }
     },
     {
       title: 'Active Orders',
@@ -128,7 +131,10 @@ const Dashboard = () => {
       subtitle: `${totals.pendingOrders} pending`,
       icon: List,
       color: 'blue' as const,
-      trend: '+8.2%'
+      trend: {
+        value: '8.2%',
+        direction: 'up' as const
+      }
     },
     {
       title: 'Inventory Pool',
@@ -136,7 +142,10 @@ const Dashboard = () => {
       subtitle: `${totals.availableCheckers} available`,
       icon: Archive,
       color: 'green' as const,
-      trend: `${totals.utilizationRate}% utilized`
+      trend: {
+        value: `${totals.utilizationRate}%`,
+        direction: 'up' as const
+      }
     },
     {
       title: 'System Performance',
@@ -144,7 +153,10 @@ const Dashboard = () => {
       subtitle: 'Data load time',
       icon: Zap,
       color: 'yellow' as const,
-      trend: dataLoadTime < 2000 ? 'Optimal' : 'Slow'
+      trend: {
+        value: dataLoadTime < 2000 ? 'Optimal' : 'Slow',
+        direction: dataLoadTime < 2000 ? 'up' as const : 'down' as const
+      }
     }
   ];
 
