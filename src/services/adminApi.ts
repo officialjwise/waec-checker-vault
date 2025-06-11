@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 // Simple in-memory cache for API responses
@@ -43,6 +42,9 @@ const clearCache = (pattern?: string) => {
 // Get the admin token from localStorage
 const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
+  console.log('Getting auth headers - token exists:', !!token);
+  console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'null');
+  
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
@@ -51,6 +53,8 @@ const getAuthHeaders = () => {
 
 const getMultipartAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
+  console.log('Getting multipart auth headers - token exists:', !!token);
+  
   return {
     'Authorization': token ? `Bearer ${token}` : '',
   };
@@ -207,6 +211,7 @@ class AdminApiService {
       }
 
       const data = await response.json();
+      console.log('Login response received, token preview:', data.access_token ? `${data.access_token.substring(0, 20)}...` : 'no token');
       return data;
     } catch (error) {
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -227,12 +232,15 @@ class AdminApiService {
   isAuthenticated(): boolean {
     const token = localStorage.getItem('admin_token');
     const authenticated = localStorage.getItem('admin_authenticated');
+    console.log('Checking authentication - token exists:', !!token, 'authenticated flag:', authenticated);
     return !!(token && authenticated === 'true');
   }
 
   // Enhanced API call with better auth handling
   private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = getAuthHeaders();
+    console.log('Making authenticated request to:', url);
+    console.log('Request headers:', { ...headers, Authorization: headers.Authorization ? `Bearer ${headers.Authorization.substring(7, 27)}...` : 'missing' });
     
     const response = await fetch(url, {
       ...options,
@@ -243,8 +251,11 @@ class AdminApiService {
       mode: 'cors',
     });
 
+    console.log('Response status:', response.status);
+
     // If we get a 401, clear credentials and throw error
     if (response.status === 401) {
+      console.log('Received 401, clearing credentials');
       this.logout();
       throw new Error('Authentication failed. Please log in again.');
     }
@@ -618,3 +629,5 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
+
+}
