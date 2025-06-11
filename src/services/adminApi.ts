@@ -1,7 +1,7 @@
-const BASE_URL = 'https://waec-backend.onrender.com/api';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'MISSING_BASE_URL';
 
 // Get API Key from environment variables
-const API_KEY = import.meta.env.VITE_API_KEY || '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
+const API_KEY = import.meta.env.VITE_API_KEY || 'MISSING_API_KEY';
 
 // Simple in-memory cache for API responses
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -41,7 +41,7 @@ const clearCache = (pattern?: string) => {
   }
 };
 
-// Get the admin token from localStorage - removed logging
+// Get the admin token from localStorage
 const getAuthHeaders = () => {
   const token = localStorage.getItem('admin_token');
   
@@ -58,6 +58,7 @@ const getMultipartAuthHeaders = () => {
   return {
     'Authorization': token ? `Bearer ${token}` : '',
     'X-API-Key': API_KEY,
+    // Don't set Content-Type for multipart, let browser set it with boundary
   };
 };
 
@@ -193,7 +194,7 @@ export interface AdminStats {
 }
 
 class AdminApiService {
-  // Admin Login - removed logging
+  // Admin Login
   async login(email: string, password: string): Promise<{ access_token: string }> {
     try {
       const response = await fetch(`${BASE_URL}/auth/admin/login`, {
@@ -234,7 +235,7 @@ class AdminApiService {
     return !!(token && authenticated === 'true');
   }
 
-  // Enhanced API call - removed logging
+  // Enhanced API call
   private async makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
     const headers = getAuthHeaders();
     
@@ -256,7 +257,7 @@ class AdminApiService {
     return response;
   }
 
-  // Orders API methods - removed status synchronization that was forcing pending
+  // Orders API methods
   async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
     const cacheKey = `orders_${JSON.stringify(filters)}`;
     const cached = getCachedData(cacheKey);
@@ -385,9 +386,16 @@ class AdminApiService {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/upload`, {
+      const token = localStorage.getItem('admin_token');
+      
+      const response = await fetch(`${BASE_URL}/admin/checkers/upload`, {
         method: 'POST',
-        headers: getMultipartAuthHeaders(),
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'X-API-Key': API_KEY,
+          // Don't set Content-Type - let browser handle multipart boundary
+        },
+        mode: 'cors',
         body: formData,
       });
 
@@ -584,3 +592,5 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
+
+export default adminApi;
