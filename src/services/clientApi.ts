@@ -53,8 +53,6 @@ class ClientApiService {
         url += `?waec_type=${encodeURIComponent(upperWaecType)}`;
       }
 
-      console.log('Making availability request to:', url);
-
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -64,11 +62,8 @@ class ClientApiService {
         signal: AbortSignal.timeout(30000), // 30 second timeout
       });
 
-      console.log('Availability response status:', response.status);
-
       if (!response.ok) {
         const responseText = await response.text();
-        console.log('Full error response body:', responseText);
         
         let errorMessage = `HTTP ${response.status}`;
         
@@ -83,7 +78,6 @@ class ClientApiService {
       }
 
       const result = await response.json();
-      console.log('Availability check result:', result);
       
       // Handle the actual backend response format
       // Backend returns: { statusCode: 200, message: "Available checkers for WASSCE", count: 785, data: [...] }
@@ -104,8 +98,6 @@ class ClientApiService {
       }
       
     } catch (error) {
-      console.error('Error in checkAvailability:', error);
-      
       // Handle different types of errors with specific messages
       if (error instanceof TypeError) {
         if (error.message.includes('Failed to fetch')) {
@@ -137,8 +129,6 @@ class ClientApiService {
   // Initiate an order
   async initiateOrder(orderData: OrderRequest): Promise<OrderResponse> {
     try {
-      console.log('Initiating order with data:', orderData);
-      
       const response = await fetch(`${BASE_URL}/orders/initiate`, {
         method: 'POST',
         headers: {
@@ -147,13 +137,10 @@ class ClientApiService {
         body: JSON.stringify(orderData),
       });
 
-      console.log('Order initiation response status:', response.status);
-
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
         try {
           const errorText = await response.text();
-          console.log('Order error response body:', errorText);
           
           try {
             const errorJson = JSON.parse(errorText);
@@ -162,7 +149,7 @@ class ClientApiService {
             errorMessage = errorText || errorMessage;
           }
         } catch (parseError) {
-          console.log('Could not parse order error response:', parseError);
+          // Could not parse error response
         }
 
         throw new Error(`Failed to initiate order: ${response.status} - ${errorMessage}`);
@@ -170,7 +157,6 @@ class ClientApiService {
 
       return await response.json();
     } catch (error) {
-      console.error('Error initiating order:', error);
       throw error;
     }
   }
@@ -178,8 +164,6 @@ class ClientApiService {
   // Verify payment using reference
   async verifyPayment(reference: string): Promise<VerifyPaymentResponse> {
     try {
-      console.log('Verifying payment with reference:', reference);
-      
       const response = await fetch(`${BASE_URL}/orders/verify/${reference}`, {
         method: 'GET',
         headers: {
@@ -187,13 +171,10 @@ class ClientApiService {
         },
       });
 
-      console.log('Payment verification response status:', response.status);
-
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
         try {
           const errorText = await response.text();
-          console.log('Payment verification error response body:', errorText);
           
           try {
             const errorJson = JSON.parse(errorText);
@@ -202,18 +183,15 @@ class ClientApiService {
             errorMessage = errorText || errorMessage;
           }
         } catch (parseError) {
-          console.log('Could not parse payment verification error response:', parseError);
+          // Could not parse error response
         }
 
         throw new Error(`Failed to verify payment: ${response.status} - ${errorMessage}`);
       }
 
       const result = await response.json();
-      // Log the verification result but don't log sensitive checker data
-      console.log('Payment verification successful for order:', result.order_id);
       return result;
     } catch (error) {
-      console.error('Error verifying payment:', error);
       throw error;
     }
   }

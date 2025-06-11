@@ -21,6 +21,7 @@ const Success = () => {
   const [purchaseDate, setPurchaseDate] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [verificationError, setVerificationError] = useState("");
+  const [isNetworkError, setIsNetworkError] = useState(false);
 
   const examTypeNames = {
     bece: "BECE",
@@ -44,21 +45,21 @@ const Success = () => {
     const status = searchParams.get("status");
     const backendOrderId = searchParams.get("order_id");
     
-    console.log("URL parameters:", { trxref, reference, status, backendOrderId });
-    
-    // Use trxref as the primary reference (Paystack's actual transaction reference)
-    const paymentReference = trxref || reference;
-    
-    if (paymentReference && (status === "success" || status === "successful")) {
-      console.log("Found payment callback parameters, verifying payment with reference:", paymentReference);
-      verifyPayment(paymentReference);
-    } else if (backendOrderId && status === "success") {
-      console.log("Found backend success parameters");
-      // Handle direct success from backend redirect
-      fetchOrderDetails(backendOrderId);
+    if (trxref || reference) {
+      // Use trxref as the primary reference (Paystack's actual transaction reference)
+      const paymentReference = trxref || reference;
+      
+      if (paymentReference && (status === "success" || status === "successful")) {
+        verifyPayment(paymentReference);
+      } else if (backendOrderId && status === "success") {
+        // Handle direct success from backend redirect
+        fetchOrderDetails(backendOrderId);
+      } else {
+        setVerificationError("Payment status is not confirmed. Please contact support if you made a payment.");
+        setIsLoading(false);
+      }
     } else {
-      console.log("No valid payment parameters found");
-      setVerificationError("Invalid payment parameters. Please contact support if you made a payment.");
+      setVerificationError("No payment reference found. Please contact support if you made a payment.");
       setIsLoading(false);
     }
   }, [searchParams]);
@@ -67,11 +68,9 @@ const Success = () => {
     try {
       setIsLoading(true);
       setVerificationError("");
-      
-      console.log("Verifying payment for reference:", reference);
+      setIsNetworkError(false);
       
       const response = await clientApi.verifyPayment(reference);
-      console.log("Payment verification response:", response);
       
       if (response.status === "success" && response.checkers && response.checkers.length > 0) {
         setOrderId(response.order_id);
@@ -104,8 +103,15 @@ const Success = () => {
       }
       
     } catch (error) {
-      console.error("Payment verification error:", error);
-      setVerificationError(error instanceof Error ? error.message : "Failed to verify payment");
+      const errorMessage = error instanceof Error ? error.message : "Failed to verify payment";
+      
+      // Check if it's a network error
+      if (errorMessage.includes("Network error") || errorMessage.includes("Failed to fetch")) {
+        setIsNetworkError(true);
+        setVerificationError("Unable to connect to our servers. This appears to be a temporary issue. Please try refreshing the page or contact support.");
+      } else {
+        setVerificationError(errorMessage);
+      }
       
       toast({
         title: "Verification Failed",
@@ -129,7 +135,6 @@ const Success = () => {
         description: "Your order has been processed successfully.",
       });
     } catch (error) {
-      console.error("Error fetching order details:", error);
       setVerificationError("Failed to fetch order details");
     } finally {
       setIsLoading(false);
@@ -144,18 +149,29 @@ const Success = () => {
     setViewMode(viewMode === "grid" ? "list" : "grid");
   };
 
+  const handleRetry = () => {
+    window.location.reload();
+  };
+
   if (verificationError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50">
         <div className="max-w-md mx-auto text-center p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Verification Error</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {isNetworkError ? "Connection Error" : "Verification Error"}
+          </h2>
           <p className="text-gray-600 mb-4">{verificationError}</p>
-          <div className="space-y-2">
+          <div className="space-y-3">
+            {isNetworkError && (
+              <Button onClick={handleRetry} className="w-full">
+                Try Again
+              </Button>
+            )}
             <p className="text-sm text-gray-500">
               If you made a payment, please contact support with your payment reference.
             </p>
             <Link to="/">
-              <Button>Back to Home</Button>
+              <Button variant="outline" className="w-full">Back to Home</Button>
             </Link>
           </div>
         </div>
