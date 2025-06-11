@@ -1,7 +1,7 @@
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'MISSING_BASE_URL';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://waec-backend.onrender.com/api';
 
 // Get API Key from environment variables
-const API_KEY = import.meta.env.VITE_API_KEY || 'MISSING_API_KEY';
+const API_KEY = import.meta.env.VITE_API_KEY || '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
 // Simple in-memory cache for API responses
 const cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
@@ -197,6 +197,7 @@ class AdminApiService {
   // Admin Login
   async login(email: string, password: string): Promise<{ access_token: string }> {
     try {
+      console.log('Attempting login with BASE_URL:', BASE_URL);
       const response = await fetch(`${BASE_URL}/auth/admin/login`, {
         method: 'POST',
         headers: {
@@ -269,6 +270,7 @@ class AdminApiService {
     });
 
     try {
+      console.log('Fetching orders from:', `${BASE_URL}/admin/orders?${queryParams}`);
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/orders?${queryParams}`);
 
       if (!response.ok) {
@@ -282,6 +284,7 @@ class AdminApiService {
       setCachedData(cacheKey, ordersData, CACHE_TTL.orders);
       return ordersData;
     } catch (error) {
+      console.error('Error fetching orders:', error);
       throw error;
     }
   }
@@ -487,6 +490,7 @@ class AdminApiService {
     if (cached) return cached;
 
     try {
+      console.log('Fetching inventory from:', `${BASE_URL}/admin/inventory`);
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/inventory`);
 
       if (!response.ok) {
@@ -499,6 +503,7 @@ class AdminApiService {
       setCachedData(cacheKey, inventoryData, CACHE_TTL.inventory);
       return inventoryData;
     } catch (error) {
+      console.error('Error fetching inventory:', error);
       throw error;
     }
   }
