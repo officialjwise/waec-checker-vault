@@ -82,11 +82,12 @@ const Summary = () => {
     }
   };
 
+  // Calculate total revenue from ONLY paid orders
   const totalRevenue = paidOrders.reduce((acc, order) => {
     return acc + (order.amount || (order.quantity * getPrice(order.waec_type)));
   }, 0);
 
-  // Prepare chart data
+  // Prepare chart data - only use paid orders for revenue calculation
   const chartData = inventory.byWaecType.map((item) => {
     const assignedCount = assignedCheckers[item.waec_type] || 0;
     const waecRevenue = paidOrders

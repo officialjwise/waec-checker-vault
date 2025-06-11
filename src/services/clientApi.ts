@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 export interface CheckerAvailability {
@@ -337,6 +336,17 @@ class ClientApiService {
       }
 
       const result = await response.json();
+      
+      // Handle the success response properly - don't throw error if verification was successful
+      if (result.message && result.message.includes('verified successfully')) {
+        // Transform the successful response to match our expected format
+        return {
+          status: 'success',
+          message: result.message,
+          checkers: result.checkers || []
+        };
+      }
+      
       return result;
     } catch (error) {
       // Handle different types of errors with specific messages
