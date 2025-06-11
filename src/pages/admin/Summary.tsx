@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
 import AdminCharts from '@/components/AdminCharts';
@@ -22,18 +23,26 @@ const Summary = () => {
       setLoading(true);
       console.log('Fetching summary data...');
       
-      const [inventoryData, ordersData] = await Promise.all([
+      // First get all orders, then filter for paid ones to ensure we get the right data
+      const [inventoryData, allOrdersData] = await Promise.all([
         adminApi.getInventory(),
-        adminApi.getOrders({ payment_status: 'paid' })
+        adminApi.getOrders({}) // Get all orders first
       ]);
       
       console.log('Summary data fetched:', inventoryData);
-      console.log('Paid orders fetched - Raw data:', ordersData);
-      console.log('Number of paid orders received:', ordersData.length);
-      console.log('First 3 paid orders structure:', ordersData.slice(0, 3));
+      console.log('All orders fetched:', allOrdersData);
+      
+      // Filter for paid orders manually to ensure we have the right data
+      const paidOrdersFiltered = allOrdersData.filter(order => 
+        order.status === 'paid' || order.payment_status === 'paid'
+      );
+      
+      console.log('Filtered paid orders:', paidOrdersFiltered);
+      console.log('Number of paid orders after filtering:', paidOrdersFiltered.length);
+      console.log('Sample paid orders structure:', paidOrdersFiltered.slice(0, 3));
       
       setInventory(inventoryData);
-      setPaidOrders(ordersData);
+      setPaidOrders(paidOrdersFiltered);
 
       // Fetch assigned checkers for each WAEC type
       const assignedCheckersData: {[key: string]: number} = {};
@@ -95,36 +104,46 @@ const Summary = () => {
       amount: order.amount,
       quantity: order.quantity,
       waec_type: order.waec_type,
+      status: order.status,
       payment_status: order.payment_status
     });
     
-    // If order has an amount field and it's valid, use it
-    if (order.amount && order.amount > 0) {
+    // Try order.amount first
+    if (order.amount !== undefined && order.amount !== null && order.amount > 0) {
       console.log(`Using order.amount: ${order.amount}`);
-      return order.amount;
+      return Number(order.amount);
     }
     
-    // Otherwise calculate from quantity and price
+    // Fallback to calculated amount
     const price = getPrice(order.waec_type);
-    const calculatedRevenue = order.quantity * price;
-    console.log(`Calculated from quantity × price: ${order.quantity} × ${price} = ${calculatedRevenue}`);
+    const quantity = Number(order.quantity) || 0;
+    const calculatedRevenue = quantity * price;
+    console.log(`Calculated from quantity × price: ${quantity} × ${price} = ${calculatedRevenue}`);
     return calculatedRevenue;
   };
 
   // Calculate total revenue from ONLY paid orders
-  console.log('Starting total revenue calculation...');
+  console.log('=== STARTING REVENUE CALCULATION ===');
   console.log('paidOrders array length:', paidOrders.length);
   console.log('paidOrders sample:', paidOrders.slice(0, 2));
   
   const totalRevenue = paidOrders.reduce((acc, order, index) => {
     const orderRevenue = calculateOrderRevenue(order);
-    console.log(`Order ${index + 1}/${paidOrders.length} - ID: ${order.id}, Revenue: ${orderRevenue}, Running total: ${acc + orderRevenue}`);
-    return acc + orderRevenue;
+    const newTotal = acc + orderRevenue;
+    console.log(`Order ${index + 1}/${paidOrders.length} - ID: ${order.id}, Revenue: ${orderRevenue}, Running total: ${newTotal}`);
+    return newTotal;
   }, 0);
 
   console.log('=== FINAL REVENUE CALCULATION ===');
   console.log('Total revenue calculated:', totalRevenue);
   console.log('Number of paid orders processed:', paidOrders.length);
+  console.log('Revenue breakdown by order:', paidOrders.map(order => ({
+    id: order.id,
+    amount: order.amount,
+    quantity: order.quantity,
+    waec_type: order.waec_type,
+    calculated: calculateOrderRevenue(order)
+  })));
   console.log('===================================');
 
   // Prepare chart data - only use paid orders for revenue calculation
