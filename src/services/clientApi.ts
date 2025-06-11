@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 
 export interface CheckerAvailability {
@@ -41,85 +40,114 @@ class ClientApiService {
     try {
       let url = `${BASE_URL}/checkers/availability`;
       
-      // Try different parameter formats to handle potential API variations
       if (waecType) {
-        // First try with waec_type parameter
-        url += `?waec_type=${encodeURIComponent(waecType)}`;
+        // Ensure waecType is uppercase and valid
+        const validTypes = ['BECE', 'WASSCE', 'NOVDEC', 'CSSPS'];
+        const upperWaecType = waecType.toUpperCase();
+        
+        if (!validTypes.includes(upperWaecType)) {
+          throw new Error(`Invalid waec_type: ${waecType}. Must be one of: ${validTypes.join(', ')}`);
+        }
+        
+        url += `?waec_type=${encodeURIComponent(upperWaecType)}`;
       }
 
       console.log('Making availability request to:', url);
+      console.log('Request headers will include:', {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      });
 
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
+        // Add timeout and other fetch options for better error handling
+        signal: AbortSignal.timeout(30000), // 30 second timeout
       });
 
       console.log('Availability response status:', response.status);
       console.log('Availability response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Response URL:', response.url);
+      console.log('Response OK:', response.ok);
 
       if (!response.ok) {
-        // Try to get the error response body for more details
+        // Get the full response text for debugging
+        const responseText = await response.text();
+        console.log('Full error response body:', responseText);
+        
         let errorMessage = `HTTP ${response.status}`;
+        let parsedError = null;
+        
         try {
-          const errorText = await response.text();
-          console.log('Error response body:', errorText);
-          
-          // Try to parse as JSON first
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.message || errorJson.error || errorText;
-          } catch {
-            // If not JSON, use the text as is
-            errorMessage = errorText || errorMessage;
-          }
+          // Try to parse as JSON
+          parsedError = JSON.parse(responseText);
+          console.log('Parsed error JSON:', parsedError);
+          errorMessage = parsedError.message || parsedError.error || responseText;
         } catch (parseError) {
-          console.log('Could not parse error response:', parseError);
+          console.log('Response is not valid JSON, using text as error:', responseText);
+          errorMessage = responseText || errorMessage;
         }
 
-        // Handle specific 400 error
+        // Handle specific status codes
         if (response.status === 400) {
-          console.log('400 Bad Request - trying alternative endpoint format');
+          console.log('400 Bad Request received');
+          console.log('Request URL was:', url);
+          console.log('waecType parameter was:', waecType);
           
-          // Try without the waec_type parameter as fallback
-          if (waecType) {
-            console.log('Retrying without waec_type parameter');
-            try {
-              const fallbackResponse = await fetch(`${BASE_URL}/checkers/availability`, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-              });
-              
-              if (fallbackResponse.ok) {
-                console.log('Fallback request succeeded');
-                return await fallbackResponse.json();
-              }
-            } catch (fallbackError) {
-              console.log('Fallback request also failed:', fallbackError);
-            }
-          }
+          // Provide specific error message for 400
+          const detailedError = `Bad Request (400): ${errorMessage}. 
+            URL: ${url}
+            Parameter: waec_type=${waecType}
+            Backend expects one of: BECE, WASSCE, NOVDEC, CSSPS`;
           
-          throw new Error(`Bad Request: ${errorMessage}. The API may not support filtering by exam type or the parameter format may be incorrect.`);
+          throw new Error(detailedError);
         }
 
-        throw new Error(`Failed to check availability: ${response.status} - ${errorMessage}`);
+        if (response.status === 404) {
+          throw new Error(`Endpoint not found (404): ${url}. Please check if the backend is running and the endpoint exists.`);
+        }
+
+        if (response.status === 500) {
+          throw new Error(`Server error (500): ${errorMessage}. There may be an issue with the backend service.`);
+        }
+
+        throw new Error(`Request failed with status ${response.status}: ${errorMessage}`);
       }
 
       const result = await response.json();
-      console.log('Availability check result:', result);
+      console.log('Availability check successful, result:', result);
       return result;
-    } catch (error) {
-      console.error('Error checking availability:', error);
       
-      // Provide more specific error handling
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        throw new Error('Network connection failed. Please check your internet connection and try again.');
+    } catch (error) {
+      console.error('Error in checkAvailability:', error);
+      
+      // Handle different types of errors with specific messages
+      if (error instanceof TypeError) {
+        if (error.message.includes('Failed to fetch')) {
+          const networkError = new Error(`Network error: Unable to connect to ${BASE_URL}. 
+            This could be due to:
+            1. Backend server is down
+            2. CORS issues
+            3. Network connectivity problems
+            4. Incorrect base URL
+            
+            Please verify the backend is running and accessible.`);
+          throw networkError;
+        }
+        
+        if (error.message.includes('timeout')) {
+          throw new Error('Request timeout: The server took too long to respond. Please try again.');
+        }
+      }
+
+      if (error.name === 'AbortError') {
+        throw new Error('Request was aborted due to timeout (30 seconds). Please check your connection and try again.');
       }
       
-      // Re-throw the error as is if it's already a meaningful error
+      // Re-throw the error if it's already a meaningful application error
       throw error;
     }
   }
