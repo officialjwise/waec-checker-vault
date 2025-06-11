@@ -1,4 +1,3 @@
-
 const BASE_URL = 'https://waec-backend.onrender.com/api';
 const ADMIN_API_KEY = '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';
 
@@ -246,7 +245,7 @@ class AdminApiService {
     return response;
   }
 
-  // Orders API methods - updated with better error handling
+  // Orders API methods - updated to return just the data array
   async getOrders(filters: OrderFilters = {}): Promise<Order[]> {
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -260,8 +259,14 @@ class AdminApiService {
         throw new Error(`Failed to fetch orders: ${response.status}`);
       }
 
-      const data = await response.json();
-      return data;
+      const responseData = await response.json();
+      console.log('Raw API response:', responseData);
+      
+      // Extract the data array from the response object
+      const ordersData = responseData.data || [];
+      console.log('Extracted orders data:', ordersData);
+      
+      return ordersData;
     } catch (error) {
       console.error('Error in getOrders:', error);
       throw error;
