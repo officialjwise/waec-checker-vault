@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -11,10 +11,13 @@ const UploadCheckers = () => {
   const [uploading, setUploading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    console.log('File selected:', file);
+    
     if (file && file.type === 'text/csv') {
       setSelectedFile(file);
       setUploadResult(null);
@@ -27,6 +30,11 @@ const UploadCheckers = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleButtonClick = () => {
+    console.log('Upload button clicked');
+    fileInputRef.current?.click();
   };
 
   const handlePreview = async (file: File) => {
@@ -82,6 +90,9 @@ const UploadCheckers = () => {
     setSelectedFile(null);
     setPreviewData([]);
     setUploadResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -106,18 +117,20 @@ const UploadCheckers = () => {
             <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Choose CSV file</h3>
             <p className="text-gray-500 mb-4">Upload your WAEC checkers data</p>
+            
+            {/* Hidden file input */}
             <input
+              ref={fileInputRef}
               type="file"
               accept=".csv"
               onChange={handleFileSelect}
               className="hidden"
-              id="csv-upload"
             />
-            <label htmlFor="csv-upload">
-              <Button className="cursor-pointer">
-                Select CSV File
-              </Button>
-            </label>
+            
+            {/* Visible button */}
+            <Button onClick={handleButtonClick} type="button">
+              Select CSV File
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">

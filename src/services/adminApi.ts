@@ -69,9 +69,14 @@ export interface OtpRequest {
 export interface InventoryItem {
   waec_type: string;
   total: number;
-  assigned: number;
   available: number;
+  assigned?: number;
   last_updated?: string;
+}
+
+export interface InventoryResponse {
+  byWaecType: InventoryItem[];
+  lowStock: string[];
 }
 
 export interface LogEntry {
@@ -260,9 +265,8 @@ class AdminApiService {
       }
 
       const responseData = await response.json();
-      console.log('Raw API response:', responseData);
+      console.log('Raw orders API response:', responseData);
       
-      // Extract the data array from the response object
       const ordersData = responseData.data || [];
       console.log('Extracted orders data:', ordersData);
       
@@ -284,7 +288,6 @@ class AdminApiService {
       const responseData = await response.json();
       console.log('Order detail response:', responseData);
       
-      // Extract the data from the response object if it's wrapped
       const orderData = responseData.data || responseData;
       return orderData;
     } catch (error) {
@@ -328,13 +331,17 @@ class AdminApiService {
       const responseData = await response.json();
       console.log('Checkers response:', responseData);
       
-      // Extract the data array from the response object
       const checkersData = responseData.data || responseData || [];
       return checkersData;
     } catch (error) {
       console.error('Error in getCheckers:', error);
       throw error;
     }
+  }
+
+  // New method to get assigned/unassigned checkers by WAEC type
+  async getCheckersByType(waecType: string, assigned: boolean): Promise<Checker[]> {
+    return this.getCheckers({ waec_type: waecType, assigned });
   }
 
   async previewCheckers(file: File): Promise<any[]> {
@@ -431,7 +438,6 @@ class AdminApiService {
       const responseData = await response.json();
       console.log('OTP requests response:', responseData);
       
-      // Extract the data array from the response object
       const otpData = responseData.data || responseData || [];
       return otpData;
     } catch (error) {
@@ -440,8 +446,8 @@ class AdminApiService {
     }
   }
 
-  // Inventory API method - updated with better error handling
-  async getInventory(): Promise<InventoryItem[]> {
+  // Inventory API method - updated to handle new structure
+  async getInventory(): Promise<InventoryResponse> {
     try {
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/inventory`);
 
@@ -452,9 +458,9 @@ class AdminApiService {
       const responseData = await response.json();
       console.log('Inventory response:', responseData);
       
-      // Extract the data array from the response object
-      const inventoryData = responseData.data || responseData || [];
-      return Array.isArray(inventoryData) ? inventoryData : [];
+      // Extract the data from the response object
+      const inventoryData = responseData.data || { byWaecType: [], lowStock: [] };
+      return inventoryData;
     } catch (error) {
       console.error('Error in getInventory:', error);
       throw error;
@@ -499,7 +505,6 @@ class AdminApiService {
       const responseData = await response.json();
       console.log('Logs response:', responseData);
       
-      // Extract the data array from the response object
       const logsData = responseData.data || responseData || [];
       return Array.isArray(logsData) ? logsData : [];
     } catch (error) {
@@ -541,3 +546,5 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
+
+}

@@ -16,16 +16,12 @@ interface OrderDetailModalProps {
   order: OrderDetail | null;
   isOpen: boolean;
   onClose: () => void;
-  onStatusUpdate?: (orderId: string, status: string) => void;
-  updating?: string | null;
 }
 
 const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ 
   order, 
   isOpen, 
-  onClose, 
-  onStatusUpdate,
-  updating 
+  onClose
 }) => {
   if (!order) return null;
 
@@ -33,13 +29,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
       paid: 'bg-green-100 text-green-800 border-green-200',
-      cancelled: 'bg-red-100 text-red-800 border-red-200'
+      cancelled: 'bg-red-100 text-red-800 border-red-200',
+      completed: 'bg-blue-100 text-blue-800 border-blue-200',
+      processing: 'bg-purple-100 text-purple-800 border-purple-200'
     };
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const getPaymentColor = (paid: boolean) => {
-    return paid 
+  const getPaymentColor = (paymentStatus: string) => {
+    return paymentStatus === 'paid'
       ? 'bg-green-100 text-green-800 border-green-200' 
       : 'bg-red-100 text-red-800 border-red-200';
   };
@@ -50,18 +48,15 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     return quantity * (prices[waecType as keyof typeof prices] || 50);
   };
 
-  const isPaid = order.payment_status === 'paid';
-  const currentStatus = order.status || 'pending';
-
-  const handleStatusUpdate = (newStatus: string) => {
-    if (onStatusUpdate) {
-      onStatusUpdate(order.id, newStatus);
-    }
-  };
-
   const formatStatusText = (status: string) => {
     if (!status) return 'Pending';
     return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not available';
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? 'Invalid date' : date.toLocaleDateString();
   };
 
   return (
@@ -89,17 +84,17 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div>
                 <p className="text-sm text-gray-600">WAEC Type</p>
                 <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                  {order.waec_type}
+                  {order.waec_type || 'Not specified'}
                 </span>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Quantity</p>
-                <p className="font-medium">{order.quantity} checkers</p>
+                <p className="font-medium">{order.quantity || 0} checkers</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Amount</p>
                 <p className="font-medium text-green-600">
-                  ₵{calculateTotal(order.quantity, order.waec_type).toLocaleString()}
+                  ₵{calculateTotal(order.quantity || 0, order.waec_type || 'WASSCE').toLocaleString()}
                 </p>
               </div>
               {order.payment_reference && (
@@ -128,14 +123,14 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <Phone className="h-4 w-4 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm text-gray-600">Phone Number</p>
-                  <p className="font-medium">{order.phone}</p>
+                  <p className="font-medium">{order.phone || 'Not provided'}</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <Mail className="h-4 w-4 text-gray-400 mr-3" />
                 <div>
                   <p className="text-sm text-gray-600">Email Address</p>
-                  <p className="font-medium">{order.email}</p>
+                  <p className="font-medium">{order.email || 'Not provided'}</p>
                 </div>
               </div>
             </div>
@@ -151,44 +146,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">Current Status</p>
-                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(currentStatus)}`}>
-                    {formatStatusText(currentStatus)}
+                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getStatusColor(order.status || 'pending')}`}>
+                    {formatStatusText(order.status || 'pending')}
                   </span>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Order Date</p>
-                  <p className="font-medium">{new Date(order.created_at).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDate(order.created_at)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Last Updated</p>
-                  <p className="font-medium">{new Date(order.updated_at).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDate(order.updated_at)}</p>
                 </div>
-                {onStatusUpdate && currentStatus !== 'paid' && currentStatus !== 'cancelled' && (
-                  <div className="pt-2 space-y-2">
-                    <p className="text-sm text-gray-600">Update Status:</p>
-                    <div className="flex space-x-2">
-                      {currentStatus === 'pending' && (
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleStatusUpdate('paid')}
-                          disabled={updating === order.id}
-                        >
-                          {updating === order.id ? 'Updating...' : 'Mark as Paid'}
-                        </Button>
-                      )}
-                      {(currentStatus === 'pending') && (
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => handleStatusUpdate('cancelled')}
-                          disabled={updating === order.id}
-                        >
-                          {updating === order.id ? 'Updating...' : 'Cancel Order'}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -200,8 +169,8 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600 mb-2">Payment Status</p>
-                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getPaymentColor(isPaid)}`}>
-                    {isPaid ? 'Paid' : 'Unpaid'}
+                  <span className={`inline-block px-3 py-1 text-sm font-medium rounded-full border ${getPaymentColor(order.payment_status || 'unpaid')}`}>
+                    {order.payment_status === 'paid' ? 'Paid' : 'Unpaid'}
                   </span>
                 </div>
                 {order.payment_method && (
@@ -230,7 +199,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       {checker.assigned_at && (
                         <p className="text-xs text-gray-400 flex items-center mt-1">
                           <Clock className="h-3 w-3 mr-1" />
-                          Assigned: {new Date(checker.assigned_at).toLocaleDateString()}
+                          Assigned: {formatDate(checker.assigned_at)}
                         </p>
                       )}
                     </div>

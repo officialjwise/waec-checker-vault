@@ -9,7 +9,6 @@ import { adminApi, Order, OrderDetail, OrderFilters } from '@/services/adminApi'
 const Orders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -29,7 +28,6 @@ const Orders = () => {
       setLoading(true);
       console.log('Fetching orders with filters:', filters);
       
-      // Add pagination to filters
       const paginatedFilters = {
         ...filters,
         limit: itemsPerPage,
@@ -39,11 +37,9 @@ const Orders = () => {
       const data = await adminApi.getOrders(paginatedFilters);
       console.log('Orders fetched:', data);
       
-      // Validate and normalize order data
       const validatedOrders = data.map(order => adminApi.validateOrderData(order));
       setOrders(validatedOrders);
       
-      // Calculate total pages (assuming we get itemsPerPage items unless it's the last page)
       if (data.length === itemsPerPage) {
         setTotalPages(Math.max(currentPage + 1, totalPages));
       } else if (currentPage === 1) {
@@ -72,7 +68,7 @@ const Orders = () => {
       filters.status = filterStatus;
     }
     
-    setCurrentPage(1); // Reset to first page when applying filters
+    setCurrentPage(1);
     fetchOrders(filters);
   };
 
@@ -96,7 +92,9 @@ const Orders = () => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
       paid: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800'
+      cancelled: 'bg-red-100 text-red-800',
+      completed: 'bg-blue-100 text-blue-800',
+      processing: 'bg-purple-100 text-purple-800'
     };
     return `px-2 py-1 text-xs font-medium rounded-full ${colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'}`;
   };
@@ -107,7 +105,6 @@ const Orders = () => {
       const orderDetail = await adminApi.getOrderDetail(order.id);
       console.log('Order detail fetched:', orderDetail);
       
-      // Ensure the order detail has all required fields
       const completeOrderDetail = {
         ...orderDetail,
         status: orderDetail.status || 'pending',
@@ -127,29 +124,6 @@ const Orders = () => {
     }
   };
 
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
-    try {
-      setUpdating(orderId);
-      console.log('Updating order status:', orderId, newStatus);
-      await adminApi.updateOrderStatus(orderId, newStatus);
-      toast({
-        title: "Success",
-        description: "Order status updated successfully.",
-      });
-      // Refresh orders list
-      fetchOrders();
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update order status. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setUpdating(null);
-    }
-  };
-
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
@@ -166,10 +140,14 @@ const Orders = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading orders...</p>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded mb-2"></div>
+              <div className="h-8 bg-gray-200 rounded"></div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -363,8 +341,6 @@ const Orders = () => {
         order={selectedOrder}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onStatusUpdate={handleUpdateOrderStatus}
-        updating={updating}
       />
     </div>
   );
