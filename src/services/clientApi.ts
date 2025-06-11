@@ -53,10 +53,6 @@ class ClientApiService {
       }
 
       console.log('Making availability request to:', url);
-      console.log('Request headers will include:', {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      });
 
       const response = await fetch(url, {
         method: 'GET',
@@ -64,62 +60,47 @@ class ClientApiService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        // Add timeout and other fetch options for better error handling
         signal: AbortSignal.timeout(30000), // 30 second timeout
       });
 
       console.log('Availability response status:', response.status);
-      console.log('Availability response headers:', Object.fromEntries(response.headers.entries()));
-      console.log('Response URL:', response.url);
-      console.log('Response OK:', response.ok);
 
       if (!response.ok) {
-        // Get the full response text for debugging
         const responseText = await response.text();
         console.log('Full error response body:', responseText);
         
         let errorMessage = `HTTP ${response.status}`;
-        let parsedError = null;
         
         try {
-          // Try to parse as JSON
-          parsedError = JSON.parse(responseText);
-          console.log('Parsed error JSON:', parsedError);
+          const parsedError = JSON.parse(responseText);
           errorMessage = parsedError.message || parsedError.error || responseText;
         } catch (parseError) {
-          console.log('Response is not valid JSON, using text as error:', responseText);
           errorMessage = responseText || errorMessage;
-        }
-
-        // Handle specific status codes
-        if (response.status === 400) {
-          console.log('400 Bad Request received');
-          console.log('Request URL was:', url);
-          console.log('waecType parameter was:', waecType);
-          
-          // Provide specific error message for 400
-          const detailedError = `Bad Request (400): ${errorMessage}. 
-            URL: ${url}
-            Parameter: waec_type=${waecType}
-            Backend expects one of: BECE, WASSCE, NOVDEC, CSSPS`;
-          
-          throw new Error(detailedError);
-        }
-
-        if (response.status === 404) {
-          throw new Error(`Endpoint not found (404): ${url}. Please check if the backend is running and the endpoint exists.`);
-        }
-
-        if (response.status === 500) {
-          throw new Error(`Server error (500): ${errorMessage}. There may be an issue with the backend service.`);
         }
 
         throw new Error(`Request failed with status ${response.status}: ${errorMessage}`);
       }
 
       const result = await response.json();
-      console.log('Availability check successful, result:', result);
-      return result;
+      console.log('Availability check result:', result);
+      
+      // Handle the actual backend response format
+      // Backend returns: { statusCode: 200, message: "Available checkers for WASSCE", count: 785, data: [...] }
+      // We need to transform this to our expected format: { available: boolean, message?: string }
+      
+      if (result.statusCode === 200 && result.count > 0) {
+        // Service is available if we get a 200 status and count > 0
+        return {
+          available: true,
+          message: result.message
+        };
+      } else {
+        // Service is unavailable if count is 0 or other conditions
+        return {
+          available: false,
+          message: result.message || 'Checkers are currently not available'
+        };
+      }
       
     } catch (error) {
       console.error('Error in checkAvailability:', error);
