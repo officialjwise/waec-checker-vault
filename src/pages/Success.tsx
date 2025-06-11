@@ -1,9 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Home, Printer, ExternalLink, Grid3x3, Rows2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import axios from "axios";
+import { clientApi } from "@/services/clientApi";
 
 const Success = () => {
   const [searchParams] = useSearchParams();
@@ -19,9 +20,7 @@ const Success = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [purchaseDate, setPurchaseDate] = useState("");
   const [viewMode, setViewMode] = useState("grid");
-  const [orderProcessed, setOrderProcessed] = useState(false);
   const [verificationError, setVerificationError] = useState("");
-  const [parametersProcessed, setParametersProcessed] = useState(false);
 
   const examTypeNames = {
     bece: "BECE",
@@ -37,144 +36,45 @@ const Success = () => {
     placement: "https://cssps.gov.gh"
   };
 
-  // Backend API base URL (replace with actual backend URL once deployed)
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-
   // Process URL parameters on mount and verify payment
   useEffect(() => {
-    if (parametersProcessed) return;
-
+    const reference = searchParams.get("reference") || searchParams.get("trxref");
+    const status = searchParams.get("status");
     const backendOrderId = searchParams.get("order_id");
-    const urlReference = searchParams.get("reference") || searchParams.get("trxref");
-    const urlStatus = searchParams.get("status");
     
-    const legacyOrderId = searchParams.get("orderId");
-    const legacyWaecType = searchParams.get("waecType");
-    const legacyQuantity = parseInt(searchParams.get("quantity") || "1");
-    const legacyPhoneNumber = searchParams.get("phone") || "";
+    console.log("URL parameters:", { reference, status, backendOrderId });
     
-    console.log("URL parameters:", { 
-      backendOrderId, 
-      urlReference, 
-      urlStatus,
-      legacyOrderId, 
-      legacyWaecType, 
-      legacyQuantity, 
-      legacyPhoneNumber 
-    });
-    
-    setParametersProcessed(true);
-    
-    if (backendOrderId && urlReference) {
-      console.log("Found backend callback parameters, verifying payment...");
-      verifyPayment(urlReference, backendOrderId);
-    } else if (urlReference && (urlStatus === "success" || searchParams.get("trxref"))) {
-      console.log("Found Paystack parameters, verifying payment...");
-      verifyPayment(urlReference);
-    } else if (legacyOrderId && legacyWaecType) {
-      console.log("Processing legacy order parameters");
-      setOrderId(legacyOrderId);
-      setWaecType(legacyWaecType);
-      setQuantity(legacyQuantity);
-      setPhoneNumber(legacyPhoneNumber);
-      setOrderProcessed(true);
-      navigate("/success", { replace: true });
+    if (reference && (status === "success" || status === "successful")) {
+      console.log("Found Paystack callback parameters, verifying payment...");
+      verifyPayment(reference);
+    } else if (backendOrderId && status === "success") {
+      console.log("Found backend success parameters");
+      // Handle direct success from backend redirect
+      fetchOrderDetails(backendOrderId);
     } else {
-      console.log("No valid parameters found, creating mock order for demo");
-      setOrderId(`DEMO-${Date.now()}`);
-      setWaecType("wassce");
-      setQuantity(2);
-      setPhoneNumber("0241234567");
-      setOrderProcessed(true);
-      navigate("/success", { replace: true });
+      console.log("No valid payment parameters found");
+      setVerificationError("Invalid payment parameters. Please contact support if you made a payment.");
+      setIsLoading(false);
     }
-  }, [searchParams, navigate, parametersProcessed]);
+  }, [searchParams]);
 
-  const verifyPayment = async (reference, orderIdFromCallback = null) => {
+  const verifyPayment = async (reference: string) => {
     try {
       setIsLoading(true);
       setVerificationError("");
       
-      console.log("Verifying payment for reference:", reference, "with order ID:", orderIdFromCallback);
+      console.log("Verifying payment for reference:", reference);
       
-      // Attempt to call backend API
-      let response;
-      try {
-        response = await axios.get(`${BACKEND_URL}/api/orders/verify/${reference}`);
-        console.log("Backend verification response:", response.data);
-      } catch (apiError) {
-        console.warn("Backend API not available, falling back to mock data:", apiError.message);
-        // Mock data as fallback
-        response = {
-          data: {
-            order_id: orderIdFromCallback || `PAY-${reference.slice(-8)}`,
-            waec_type: "wassce",
-            quantity: 5,
-            phone_number: "+233241234567",
-            checkers: Array.from({ length: 5 }, (_, i) => ({
-              serial: `WGC${Date.now()}${String(i + 1).padStart(2, '0')}`,
-              pin: Math.floor(Math.random() * 90000000000) + 10000000000,
-              waec_type: "wassce",
-            })),
-            message: "Payment verified, checkers assigned and sent via SMS",
-            status: "success",
-          },
-        };
-      }
+      const response = await clientApi.verifyPayment(reference);
+      console.log("Payment verification response:", response);
       
-      const { order_id, waec_type, quantity, phone_number, checkers, message } = response.data;
-      
-      setOrderId(order_id);
-      setWaecType(waec_type);
-      setQuantity(quantity);
-      setPhoneNumber(phone_number);
-      setCheckers(checkers || []);
-      
-      const now = new Date();
-      const formattedDate = now.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }) + ' @ ' + now.toLocaleTimeString('en-US', {
-        hour12: true,
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      setPurchaseDate(formattedDate);
-      
-      setOrderProcessed(true);
-      navigate("/success", { replace: true });
-      
-      toast({
-        title: "Payment Verified",
-        description: message || "Your payment has been successfully verified and checkers have been generated.",
-      });
-      
-    } catch (error) {
-      console.error("Payment verification error:", error);
-      setVerificationError(error.message || "Failed to verify payment");
-      
-      toast({
-        title: "Verification Failed",
-        description: "Failed to verify your payment. Please contact support.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Generate mock checkers for legacy/demo flows
-  useEffect(() => {
-    const generateCheckers = async () => {
-      if (!orderProcessed || !waecType || checkers.length > 0) return;
-      
-      console.log("Generating checkers for:", { waecType, quantity });
-      setIsLoading(true);
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      if (!purchaseDate) {
+      if (response.status === "success" && response.checkers && response.checkers.length > 0) {
+        setOrderId(response.order_id);
+        setWaecType(response.waec_type.toLowerCase());
+        setQuantity(response.quantity);
+        setPhoneNumber(response.phone_number);
+        setCheckers(response.checkers);
+        
         const now = new Date();
         const formattedDate = now.toLocaleDateString('en-GB', {
           day: '2-digit',
@@ -186,31 +86,50 @@ const Success = () => {
           minute: '2-digit'
         });
         setPurchaseDate(formattedDate);
-      }
-      
-      if (waecType === "placement") {
-        const placementChecker = {
-          id: 1,
-          serial: `PLC${Date.now()}`,
-          pin: Math.floor(Math.random() * 90000000000) + 10000000000
-        };
-        setCheckers([placementChecker]);
+        
+        toast({
+          title: "Payment Verified Successfully",
+          description: response.message || "Your payment has been verified and checkers have been generated.",
+        });
+        
+        // Clean up URL
+        navigate("/success", { replace: true });
       } else {
-        const generatedCheckers = Array.from({ length: quantity }, (_, index) => ({
-          id: index + 1,
-          serial: `WGC${Date.now()}${String(index + 1).padStart(2, '0')}`,
-          pin: Math.floor(Math.random() * 90000000000) + 10000000000,
-          waec_type: waecType,
-        }));
-        setCheckers(generatedCheckers);
+        throw new Error("Payment verification failed or no checkers were generated");
       }
       
-      console.log(`Generated ${quantity} checkers for ${waecType}`);
+    } catch (error) {
+      console.error("Payment verification error:", error);
+      setVerificationError(error instanceof Error ? error.message : "Failed to verify payment");
+      
+      toast({
+        title: "Verification Failed",
+        description: "Failed to verify your payment. Please contact support with your payment reference.",
+        variant: "destructive"
+      });
+    } finally {
       setIsLoading(false);
-    };
+    }
+  };
 
-    generateCheckers();
-  }, [orderProcessed, waecType, quantity, checkers.length, purchaseDate]);
+  const fetchOrderDetails = async (orderIdParam: string) => {
+    try {
+      setIsLoading(true);
+      // This would require an additional endpoint to fetch order details
+      // For now, we'll extract basic info from URL parameters
+      setOrderId(orderIdParam);
+      
+      toast({
+        title: "Order Processed",
+        description: "Your order has been processed successfully.",
+      });
+    } catch (error) {
+      console.error("Error fetching order details:", error);
+      setVerificationError("Failed to fetch order details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -226,9 +145,14 @@ const Success = () => {
         <div className="max-w-md mx-auto text-center p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Verification Error</h2>
           <p className="text-gray-600 mb-4">{verificationError}</p>
-          <Link to="/">
-            <Button>Back to Home</Button>
-          </Link>
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500">
+              If you made a payment, please contact support with your payment reference.
+            </p>
+            <Link to="/">
+              <Button>Back to Home</Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -239,24 +163,21 @@ const Success = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="animate-spin h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">
-            {searchParams.get("reference")
-              ? "Verifying your payment..."
-              : orderProcessed && waecType
-              ? `Generating your ${quantity} ${waecType === "placement" ? "placement checker" : "checkers"}...`
-              : "Processing your order..."}
-          </p>
+          <p className="text-gray-600">Verifying your payment and generating checkers...</p>
         </div>
       </div>
     );
   }
 
-  if (!orderProcessed) {
+  if (!checkers || checkers.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-orange-50">
         <div className="max-w-md mx-auto text-center p-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Processing Order...</h2>
-          <p className="text-gray-600 mb-4">Please wait while we process your order information.</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">No Checkers Found</h2>
+          <p className="text-gray-600 mb-4">No checkers were found for this order. Please contact support.</p>
+          <Link to="/">
+            <Button>Back to Home</Button>
+          </Link>
         </div>
       </div>
     );
@@ -463,10 +384,13 @@ const Success = () => {
                     
                     <div className="space-y-1 text-sm">
                       <p className="purchase-info">
-                        <span className="font-semibold">Purchased by:</span> {phoneNumber}
+                        <span className="font-semibold">Purchased by:</span> +{phoneNumber}
                       </p>
                       <p className="purchase-info">
                         <span className="font-semibold">Date:</span> {purchaseDate}
+                      </p>
+                      <p className="purchase-info">
+                        <span className="font-semibold">Order ID:</span> {orderId}
                       </p>
                       <p className="instructions text-xs text-gray-600">
                         Use your serial and PIN on the website above to {waecType === "placement" ? "check your placement" : "check your results"}

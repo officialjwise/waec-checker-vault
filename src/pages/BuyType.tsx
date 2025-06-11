@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle, Loader2, Shield, CheckCircle, X, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import { clientApi } from "@/services/clientApi";
 
 const BuyType = () => {
   const { waecType } = useParams();
@@ -21,7 +22,8 @@ const BuyType = () => {
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("ghana");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentCancelled, setPaymentCancelled] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState(true);
+  const [isAvailable, setIsAvailable] = useState(true);
   
   const countries = {
     ghana: { name: "Ghana", code: "+233", flag: "🇬🇭" },
@@ -41,6 +43,37 @@ const BuyType = () => {
     novdec: "November/December WASSCE",
     placement: "School Placement Checker"
   };
+
+  // Check availability on component mount
+  useEffect(() => {
+    const checkAvailability = async () => {
+      try {
+        setCheckingAvailability(true);
+        const availabilityResult = await clientApi.checkAvailability();
+        setIsAvailable(availabilityResult.available);
+        
+        if (!availabilityResult.available) {
+          toast({
+            title: "Service Temporarily Unavailable",
+            description: availabilityResult.message || "Checkers are currently not available. Please try again later.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error('Error checking availability:', error);
+        toast({
+          title: "Connection Error",
+          description: "Unable to check service availability. Please check your connection and try again.",
+          variant: "destructive"
+        });
+        setIsAvailable(false);
+      } finally {
+        setCheckingAvailability(false);
+      }
+    };
+
+    checkAvailability();
+  }, [toast]);
 
   useEffect(() => {
     if (location.state?.prefillQuantity) {
@@ -75,38 +108,12 @@ const BuyType = () => {
 
   const getFullPhoneNumber = () => {
     if (!phoneNumber.trim()) return "";
-    const selectedCountry = countries[country];
-    const cleanNumber = phoneNumber.replace(/[\s-]/g, '');
-    
-    if (country === "ghana") {
-      if (cleanNumber.startsWith('233')) {
-        return `+${cleanNumber}`;
-      } else if (cleanNumber.startsWith('0')) {
-        return `+233${cleanNumber.substring(1)}`;
-      } else {
-        return `+233${cleanNumber}`;
-      }
-    } else if (country === "nigeria") {
-      if (cleanNumber.startsWith('234')) {
-        return `+${cleanNumber}`;
-      } else if (cleanNumber.startsWith('0')) {
-        return `+234${cleanNumber.substring(1)}`;
-      } else {
-        return `+234${cleanNumber}`;
-      }
-    }
-    
-    return `${selectedCountry.code}${cleanNumber}`;
+    return clientApi.formatPhoneNumber(phoneNumber, country);
   };
 
-  const handleCancelPayment = () => {
-    setPaymentCancelled(true);
-    setIsProcessing(false);
-    toast({
-      title: "Payment Cancelled",
-      description: "Your payment has been cancelled. You can try again anytime.",
-      variant: "destructive"
-    });
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   };
 
   const handleSubmit = async (e) => {
@@ -121,30 +128,69 @@ const BuyType = () => {
       return;
     }
 
-    setIsProcessing(true);
-    setPaymentCancelled(false);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Check if payment was cancelled during processing
-    if (paymentCancelled) {
+    if (!email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address to proceed.",
+        variant: "destructive"
+      });
       return;
     }
+
+    if (!validateEmail(email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!isAvailable) {
+      toast({
+        title: "Service Unavailable",
+        description: "Checkers are currently not available. Please try again later.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
     
-    // Simulate success (90% success rate)
-    const success = Math.random() > 0.1;
-    
-    if (success) {
-      const orderId = `ORD-${Date.now()}`;
-      const fullPhoneNumber = getFullPhoneNumber();
-      navigate(`/success?orderId=${orderId}&waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(fullPhoneNumber)}`);
-    } else {
-      const errorCodes = ["card_declined", "insufficient_funds", "processing_error", "expired_card"];
-      const randomError = errorCodes[Math.floor(Math.random() * errorCodes.length)];
-      const fullPhoneNumber = getFullPhoneNumber();
+    try {
+      const formattedPhone = getFullPhoneNumber();
+      const waecTypeFormatted = clientApi.mapWaecType(waecType || '');
       
-      navigate(`/payment-failed?waecType=${waecType}&quantity=${quantity}&phone=${encodeURIComponent(fullPhoneNumber)}&error=${randomError}`);
+      const orderData = {
+        waec_type: waecTypeFormatted,
+        quantity: waecType === "placement" ? 1 : quantity,
+        phone: formattedPhone,
+        email: email.trim(),
+      };
+
+      console.log('Submitting order:', orderData);
+
+      const response = await clientApi.initiateOrder(orderData);
+      
+      console.log('Order initiated successfully:', response);
+      
+      toast({
+        title: "Order Initiated",
+        description: "Redirecting to payment gateway...",
+      });
+
+      // Redirect to Paystack payment URL
+      window.location.href = response.payment_url;
+      
+    } catch (error) {
+      console.error('Order initiation failed:', error);
+      
+      toast({
+        title: "Order Failed",
+        description: error instanceof Error ? error.message : "Failed to initiate order. Please try again.",
+        variant: "destructive"
+      });
+      
       setIsProcessing(false);
     }
   };
@@ -169,6 +215,20 @@ const BuyType = () => {
     );
   }
 
+  if (checkingAvailability) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
+        <Header />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Checking service availability...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
       <Header 
@@ -181,6 +241,19 @@ const BuyType = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-3xl mx-auto">
+          {/* Availability Warning */}
+          {!isAvailable && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+                <p className="text-red-800 font-medium">Service Currently Unavailable</p>
+              </div>
+              <p className="text-red-700 text-sm mt-1">
+                Checkers are temporarily not available. Please try again later.
+              </p>
+            </div>
+          )}
+
           {/* Progress Indicator */}
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-4 text-sm">
@@ -280,14 +353,14 @@ const BuyType = () => {
                   </p>
                   {phoneNumber && (
                     <p className="text-sm text-blue-600 font-medium">
-                      Full number: {getFullPhoneNumber()}
+                      Full number: +{getFullPhoneNumber()}
                     </p>
                   )}
                 </div>
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-base font-semibold text-gray-900">Email (Optional)</Label>
+                  <Label htmlFor="email" className="text-base font-semibold text-gray-900">Email Address *</Label>
                   <Input
                     id="email"
                     type="email"
@@ -295,9 +368,10 @@ const BuyType = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-12 text-lg border-2 focus:border-blue-500"
+                    required
                   />
                   <p className="text-sm text-gray-500">
-                    Email backup of your {waecType === "placement" ? "placement results" : "checkers"} (recommended)
+                    Email backup of your {waecType === "placement" ? "placement results" : "checkers"} (required)
                   </p>
                 </div>
 
@@ -331,12 +405,12 @@ const BuyType = () => {
                   <Button
                     type="submit"
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                    disabled={isProcessing}
+                    disabled={isProcessing || !isAvailable}
                   >
                     {isProcessing ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                        Processing Payment...
+                        Initiating Payment...
                       </>
                     ) : (
                       <>
@@ -345,19 +419,6 @@ const BuyType = () => {
                       </>
                     )}
                   </Button>
-                  
-                  {/* Cancel Payment Button - Only shown during processing */}
-                  {isProcessing && (
-                    <Button
-                      type="button"
-                      onClick={handleCancelPayment}
-                      variant="outline"
-                      className="w-full border-2 border-red-300 text-red-600 hover:bg-red-50 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                    >
-                      <X className="h-5 w-5 mr-2" />
-                      Cancel Payment
-                    </Button>
-                  )}
                 </div>
               </form>
             </CardContent>
@@ -367,7 +428,7 @@ const BuyType = () => {
           <div className="mt-8 text-center">
             <div className="inline-flex items-center space-x-2 text-sm text-gray-600 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-md">
               <Shield className="h-4 w-4 text-green-600" />
-              <span>Your payment is secured with 256-bit SSL encryption</span>
+              <span>Your payment is secured with Paystack and 256-bit SSL encryption</span>
             </div>
           </div>
         </div>
