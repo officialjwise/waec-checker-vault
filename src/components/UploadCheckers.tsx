@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, X, AlertTriangle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, X, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi, UploadResult } from '@/services/adminApi';
@@ -17,13 +17,18 @@ import {
 const UploadCheckers = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [allPreviewData, setAllPreviewData] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalRows, setTotalRows] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const itemsPerPage = 100;
 
   const validateFileType = (file: File): boolean => {
     const allowedTypes = ['text/csv', 'application/vnd.ms-excel'];
@@ -46,6 +51,8 @@ const UploadCheckers = () => {
     setSelectedFile(file);
     setUploadResult(null);
     setPreviewData([]);
+    setAllPreviewData([]);
+    setCurrentPage(1);
     handlePreview(file);
   };
 
@@ -59,7 +66,6 @@ const UploadCheckers = () => {
       setPreviewing(true);
       console.log('Previewing CSV file:', file.name);
       
-      // Read file content manually for preview
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
       
@@ -75,7 +81,7 @@ const UploadCheckers = () => {
         throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
       }
 
-      const previewRows = lines.slice(1, 6).map(line => {
+      const allRows = lines.slice(1).map(line => {
         const values = line.split(',').map(v => v.trim());
         return {
           serial: values[headers.indexOf('serial')] || '',
@@ -84,10 +90,13 @@ const UploadCheckers = () => {
         };
       });
 
-      setPreviewData(previewRows);
+      setAllPreviewData(allRows);
+      setTotalRows(allRows.length);
+      updatePreviewForPage(1, allRows);
+
       toast({
         title: "Preview Generated",
-        description: `Loaded ${lines.length - 1} rows from CSV file.`,
+        description: `Loaded ${allRows.length} rows from CSV file.`,
       });
     } catch (error) {
       console.error('Error previewing file:', error);
@@ -99,12 +108,31 @@ const UploadCheckers = () => {
     }
   };
 
+  const updatePreviewForPage = (page: number, data: any[]) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setPreviewData(data.slice(startIndex, endIndex));
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    updatePreviewForPage(page, allPreviewData);
+  };
+
+  const totalPages = Math.ceil(totalRows / itemsPerPage);
+
   const handleUpload = async () => {
     if (!selectedFile) return;
     
     try {
       setUploading(true);
       console.log('Uploading CSV file:', selectedFile.name);
+      
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      // Use the fixed endpoint
       const result = await adminApi.uploadCheckers(selectedFile);
       console.log('Upload result:', result);
       setUploadResult(result);
@@ -125,14 +153,17 @@ const UploadCheckers = () => {
   const clearFile = () => {
     setSelectedFile(null);
     setPreviewData([]);
+    setAllPreviewData([]);
     setUploadResult(null);
+    setCurrentPage(1);
+    setTotalRows(0);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">CSV Upload Instructions</h3>
@@ -141,6 +172,7 @@ const UploadCheckers = () => {
           <li>• Required headers: <code className="bg-blue-100 px-1 rounded">serial</code>, <code className="bg-blue-100 px-1 rounded">pin</code>, <code className="bg-blue-100 px-1 rounded">waec_type</code></li>
           <li>• WAEC types: BECE, WASSCE, NOVDEC</li>
           <li>• Duplicate serials will be skipped automatically</li>
+          <li>• Preview shows up to 100 rows per page</li>
         </ul>
       </div>
 
@@ -174,7 +206,9 @@ const UploadCheckers = () => {
                 <FileText className="h-8 w-8 text-green-500" />
                 <div>
                   <p className="font-medium text-green-900">{selectedFile.name}</p>
-                  <p className="text-sm text-green-700">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-sm text-green-700">
+                    {(selectedFile.size / 1024).toFixed(1)} KB • {totalRows} rows
+                  </p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={clearFile}>
@@ -191,13 +225,40 @@ const UploadCheckers = () => {
               </div>
             )}
 
-            {/* Preview */}
+            {/* Preview with Pagination */}
             {previewData.length > 0 && !previewing && (
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">Preview (first 5 rows)</h3>
-                <div className="overflow-x-auto">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-semibold text-gray-900">
+                    Preview (showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows} rows)
+                  </h3>
+                  {totalPages > 1 && (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-gray-600">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
+                    <thead className="bg-gray-100 sticky top-0">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Serial</th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">PIN</th>

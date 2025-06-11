@@ -371,17 +371,25 @@ class AdminApiService {
     formData.append('file', file);
 
     try {
-      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers/upload`, {
+      console.log('Uploading to endpoint:', `${BASE_URL}/admin/checkers`);
+      const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/checkers`, {
         method: 'POST',
         headers: getMultipartAuthHeaders(),
         body: formData,
       });
 
+      console.log('Upload response status:', response.status);
+      console.log('Upload response headers:', Object.fromEntries(response.headers.entries()));
+
       if (!response.ok) {
-        throw new Error(`Failed to upload checkers: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Upload failed with response:', errorText);
+        throw new Error(`Failed to upload checkers: ${response.status} - ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('Upload successful, result:', result);
+      return result;
     } catch (error) {
       console.error('Error in uploadCheckers:', error);
       throw error;
@@ -546,3 +554,5 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
+
+}
