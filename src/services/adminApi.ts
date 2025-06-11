@@ -554,5 +554,3 @@ class AdminApiService {
 }
 
 export const adminApi = new AdminApiService();
-
-}
