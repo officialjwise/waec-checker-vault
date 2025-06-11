@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,10 +71,10 @@ const RetrieveVerify = () => {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     
-    if (otp.length !== 6) {
+    if (otp.length !== 4) {
       toast({
         title: "Invalid OTP",
-        description: "Please enter the 6-digit verification code.",
+        description: "Please enter the 4-digit verification code.",
         variant: "destructive"
       });
       return;
@@ -351,7 +352,7 @@ const RetrieveVerify = () => {
                     Enter Verification Code
                   </h2>
                   <p className="text-gray-600">
-                    We've sent a 6-digit code to +233 {phoneNumber}
+                    We've sent a 4-digit code to +233 {phoneNumber}
                   </p>
                 </div>
 
@@ -363,23 +364,23 @@ const RetrieveVerify = () => {
                         <Input
                           id="otp"
                           type="text"
-                          placeholder="000000"
+                          placeholder="0000"
                           value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
                           className="mt-1 text-center text-2xl tracking-widest"
-                          maxLength={6}
+                          maxLength={4}
                           required
                           disabled={isLoading}
                         />
                         <p className="text-sm text-gray-500 mt-1 text-center">
-                          Enter the 6-digit code sent to your phone
+                          Enter the 4-digit code sent to your phone
                         </p>
                       </div>
 
                       <Button
                         type="submit"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-                        disabled={isLoading || otp.length !== 6}
+                        disabled={isLoading || otp.length !== 4}
                       >
                         {isLoading ? (
                           <>

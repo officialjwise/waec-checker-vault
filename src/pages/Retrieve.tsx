@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -207,7 +208,7 @@ const Retrieve = () => {
                   {isLoading ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                      Verifying...
+                      Sending...
                     </>
                   ) : (
                     "Send Verification Code"
