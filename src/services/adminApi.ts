@@ -447,9 +447,10 @@ class AdminApiService {
 
           if (response.ok) {
             console.log('Upload successful with endpoint:', endpoint);
-            clearCache('checkers');
-            clearCache('inventory');
-            clearCache('stats');
+            
+            // More aggressive cache clearing to ensure fresh data
+            this.clearAllCache();
+            console.log('All cache cleared after successful upload');
 
             const result = await response.json();
             console.log('Upload result:', result);
@@ -552,10 +553,13 @@ class AdminApiService {
   async getInventory(): Promise<InventoryResponse> {
     const cacheKey = 'inventory';
     const cached = getCachedData(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+      console.log('Returning cached inventory data:', cached);
+      return cached;
+    }
 
     try {
-      console.log('Fetching inventory from:', `${BASE_URL}/admin/inventory`);
+      console.log('Fetching fresh inventory from:', `${BASE_URL}/admin/inventory`);
       const response = await this.makeAuthenticatedRequest(`${BASE_URL}/admin/inventory`);
 
       if (!response.ok) {
@@ -564,6 +568,9 @@ class AdminApiService {
 
       const responseData = await response.json();
       const inventoryData = responseData.data || { byWaecType: [], lowStock: [] };
+      
+      console.log('Fresh inventory data fetched:', inventoryData);
+      console.log('Total checkers in fresh data:', inventoryData.byWaecType.reduce((acc: number, item: any) => acc + (item.total || 0), 0));
       
       setCachedData(cacheKey, inventoryData, CACHE_TTL.inventory);
       return inventoryData;
@@ -623,10 +630,12 @@ class AdminApiService {
   }
 
   clearAllCache(): void {
+    console.log('Clearing all API cache');
     clearCache();
   }
 
   clearCacheByPattern(pattern: string): void {
+    console.log(`Clearing cache with pattern: ${pattern}`);
     clearCache(pattern);
   }
 

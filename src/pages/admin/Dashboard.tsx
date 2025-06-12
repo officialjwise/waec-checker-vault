@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
 import AdminCharts from '@/components/AdminCharts';
@@ -14,8 +14,10 @@ import {
   Activity,
   BarChart3,
   Target,
-  Zap
+  Zap,
+  RefreshCw
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi, InventoryResponse, Order } from '@/services/adminApi';
 
@@ -25,18 +27,23 @@ const Dashboard = () => {
   const [totalOrders, setTotalOrders] = useState(0);
   const [paidOrders, setPaidOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [dataLoadTime, setDataLoadTime] = useState<number>(0);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
     const startTime = performance.now();
     try {
-      setLoading(true);
-      console.log('Fetching dashboard data...');
+      if (forceRefresh) {
+        setRefreshing(true);
+        // Clear cache before fetching fresh data
+        adminApi.clearAllCache();
+        console.log('Cache cleared for fresh data fetch');
+      } else {
+        setLoading(true);
+      }
+      
+      console.log('Fetching dashboard data...' + (forceRefresh ? ' (forced refresh)' : ''));
       
       // Parallel data fetching for improved performance
       const [inventoryData, ordersData, allOrdersData] = await Promise.all([
@@ -45,7 +52,12 @@ const Dashboard = () => {
         adminApi.getOrders({}) // Get all orders for proper filtering
       ]);
       
-      console.log('Dashboard data fetched:', { inventoryData, ordersData, allOrdersData });
+      console.log('Dashboard data fetched:', { 
+        inventoryData, 
+        totalInventoryCount: inventoryData.byWaecType.reduce((acc, item) => acc + (item.total || 0), 0),
+        ordersData, 
+        allOrdersData 
+      });
       
       setInventory(inventoryData);
       setTotalOrders(ordersData.length);
@@ -96,6 +108,13 @@ const Dashboard = () => {
 
       const endTime = performance.now();
       setDataLoadTime(endTime - startTime);
+
+      if (forceRefresh) {
+        toast({
+          title: "Data Refreshed",
+          description: "Dashboard data has been updated with the latest information.",
+        });
+      }
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -106,7 +125,16 @@ const Dashboard = () => {
       });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  const handleRefresh = () => {
+    fetchDashboardData(true);
   };
 
   // Use the same price logic as Summary page
@@ -270,7 +298,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Enhanced Header with Performance Indicator */}
+      {/* Enhanced Header with Performance Indicator and Refresh Button */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 rounded-lg p-6 text-white shadow-lg">
         <div className="flex justify-between items-start">
           <div>
@@ -280,14 +308,26 @@ const Dashboard = () => {
             </h1>
             <p className="text-blue-100 text-lg">Real-time business intelligence and analytics</p>
           </div>
-          <div className="text-right">
-            <div className="flex items-center text-blue-100 mb-1">
-              <Activity className="h-4 w-4 mr-1" />
-              <span className="text-sm">System Status</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-              <span className="text-sm font-medium">Online • {Math.round(dataLoadTime)}ms</span>
+          <div className="flex items-center space-x-4">
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            <div className="text-right">
+              <div className="flex items-center text-blue-100 mb-1">
+                <Activity className="h-4 w-4 mr-1" />
+                <span className="text-sm">System Status</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+                <span className="text-sm font-medium">Online • {Math.round(dataLoadTime)}ms</span>
+              </div>
             </div>
           </div>
         </div>
