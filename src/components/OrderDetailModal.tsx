@@ -35,10 +35,21 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
-  const calculateTotal = (quantity: number, waecType: string) => {
+  // Backend uses fixed price of 17.5 GHS per checker
+  const BACKEND_PRICE_PER_CHECKER = 17.5;
+
+  const calculateTotal = (quantity: number, order: OrderDetail) => {
+    // First try to use total_amount from backend
+    const totalAmount = (order as any).total_amount;
+    if (totalAmount !== undefined && totalAmount !== null) {
+      return Number(totalAmount);
+    }
+    
+    // Use existing amount field if available
     if (order.amount) return order.amount;
-    const prices = { BECE: 50, WASSCE: 75, NOVDEC: 60 };
-    return quantity * (prices[waecType as keyof typeof prices] || 50);
+    
+    // Fallback to backend's fixed price calculation
+    return quantity * BACKEND_PRICE_PER_CHECKER;
   };
 
   const formatStatusText = (status: string) => {
@@ -108,7 +119,7 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div className="bg-white rounded-lg p-3 shadow-sm">
                 <p className="text-sm text-gray-600 mb-1">Total Amount</p>
                 <p className="font-bold text-green-600 text-lg">
-                  ₵{calculateTotal(order.quantity || 0, order.waec_type || 'WASSCE').toLocaleString()}
+                  ₵{calculateTotal(order.quantity || 0, order).toLocaleString()}
                 </p>
               </div>
               <div className="bg-white rounded-lg p-3 shadow-sm">

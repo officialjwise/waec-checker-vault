@@ -120,9 +120,18 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
-  const calculateAmount = (quantity: number, waecType: string) => {
-    const prices = { BECE: 50, WASSCE: 75, NOVDEC: 60 };
-    return quantity * (prices[waecType as keyof typeof prices] || 50);
+  // Backend uses fixed price of 17.5 GHS per checker
+  const BACKEND_PRICE_PER_CHECKER = 17.5;
+
+  const calculateAmount = (quantity: number, order: Order) => {
+    // First try to use total_amount from backend
+    const totalAmount = (order as any).total_amount;
+    if (totalAmount !== undefined && totalAmount !== null) {
+      return Number(totalAmount);
+    }
+    
+    // Fallback to backend's fixed price calculation
+    return quantity * BACKEND_PRICE_PER_CHECKER;
   };
 
   const handlePageChange = (page: number) => {
@@ -262,7 +271,7 @@ const Orders = () => {
                     {order.quantity}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₵{(order.amount || calculateAmount(order.quantity, order.waec_type)).toLocaleString()}
+                    ₵{(order.amount || calculateAmount(order.quantity, order)).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
