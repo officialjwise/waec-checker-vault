@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
@@ -40,17 +39,43 @@ const Dashboard = () => {
       console.log('Fetching dashboard data...');
       
       // Parallel data fetching for improved performance
-      const [inventoryData, ordersData, paidOrdersData] = await Promise.all([
+      const [inventoryData, ordersData, allOrdersData] = await Promise.all([
         adminApi.getInventory(),
         adminApi.getOrders({ limit: 100 }),
-        adminApi.getOrders({ payment_status: 'paid' })
+        adminApi.getOrders({}) // Get all orders for proper filtering
       ]);
       
-      console.log('Dashboard data fetched:', { inventoryData, ordersData, paidOrdersData });
+      console.log('Dashboard data fetched:', { inventoryData, ordersData, allOrdersData });
       
       setInventory(inventoryData);
       setTotalOrders(ordersData.length);
-      setPaidOrders(paidOrdersData);
+
+      // Use the same filtering logic as Summary page
+      console.log('=== FILTERING FOR PAID ORDERS (Dashboard) ===');
+      
+      // Filter for paid orders - use multiple approaches like in Summary
+      const paidByStatus = allOrdersData.filter(order => order.status === 'paid');
+      const completedOrders = allOrdersData.filter(order => order.status === 'completed');
+      const ordersWithPaymentRef = allOrdersData.filter(order => order.payment_reference && order.payment_reference.trim() !== '');
+      
+      let filteredPaidOrders: Order[];
+      
+      if (paidByStatus.length > 0) {
+        console.log('Using status === "paid" filter');
+        filteredPaidOrders = paidByStatus;
+      } else if (completedOrders.length > 0) {
+        console.log('Using status === "completed" filter');
+        filteredPaidOrders = completedOrders;
+      } else if (ordersWithPaymentRef.length > 0) {
+        console.log('Using payment_reference filter');
+        filteredPaidOrders = ordersWithPaymentRef;
+      } else {
+        console.log('Using all orders for calculation');
+        filteredPaidOrders = allOrdersData;
+      }
+      
+      console.log('Final filtered paid orders count:', filteredPaidOrders.length);
+      setPaidOrders(filteredPaidOrders);
 
       // Optimized assigned checkers fetch
       const assignedCheckersData: {[key: string]: number} = {};
@@ -84,20 +109,60 @@ const Dashboard = () => {
     }
   };
 
+  // Use the same price logic as Summary page
   const getPrice = (waecType: string) => {
-    switch (waecType) {
-      case 'BECE': return 50;
-      case 'WASSCE': return 75;
-      case 'NOVDEC': return 60;
-      default: return 65;
-    }
+    const price = (() => {
+      switch (waecType) {
+        case 'BECE': return 50;
+        case 'WASSCE': return 75;
+        case 'NOVDEC': return 60;
+        default: return 65;
+      }
+    })();
+    console.log(`Price for ${waecType}: ${price}`);
+    return price;
+  };
+
+  // Use the same revenue calculation logic as Summary page
+  const calculateOrderRevenue = (order: Order) => {
+    console.log(`Calculating revenue for order ${order.id}:`, {
+      quantity: order.quantity,
+      waec_type: order.waec_type,
+      status: order.status,
+      hasAmount: 'amount' in order,
+      amount: order.amount,
+      quantityType: typeof order.quantity,
+      quantityValue: order.quantity
+    });
+    
+    // Use the same logic as Summary: calculate from quantity * price
+    const price = getPrice(order.waec_type);
+    const quantity = Number(order.quantity) || 0;
+    const calculatedRevenue = quantity * price;
+    console.log(`Calculated from quantity × price: ${quantity} × ${price} = ${calculatedRevenue}`);
+    return calculatedRevenue;
   };
 
   const calculateTotals = () => {
     const totalCheckers = inventory.byWaecType.reduce((acc, item) => acc + (item.total || 0), 0);
     const availableCheckers = inventory.byWaecType.reduce((acc, item) => acc + (item.available || 0), 0);
     const totalAssigned = Object.values(assignedCheckers).reduce((acc, count) => acc + count, 0);
-    const totalRevenue = paidOrders.reduce((acc, order) => acc + (order.amount || (order.quantity * getPrice(order.waec_type))), 0);
+    
+    // Use the same revenue calculation as Summary page
+    console.log('=== STARTING REVENUE CALCULATION (Dashboard) ===');
+    console.log('paidOrders array length:', paidOrders.length);
+    
+    const totalRevenue = paidOrders.reduce((acc, order, index) => {
+      const orderRevenue = calculateOrderRevenue(order);
+      const newTotal = acc + orderRevenue;
+      console.log(`Order ${index + 1}/${paidOrders.length} - ID: ${order.id}, Revenue: ${orderRevenue}, Running total: ${newTotal}`);
+      return newTotal;
+    }, 0);
+
+    console.log('=== FINAL REVENUE CALCULATION (Dashboard) ===');
+    console.log('Total revenue calculated:', totalRevenue);
+    console.log('===================================');
+    
     const pendingOrders = totalOrders - paidOrders.length;
     const utilizationRate = totalCheckers > 0 ? ((totalAssigned / totalCheckers) * 100).toFixed(1) : '0';
 
@@ -160,18 +225,18 @@ const Dashboard = () => {
     }
   ];
 
-  // Enhanced chart data with performance metrics
+  // Enhanced chart data with performance metrics - use same logic as Summary
   const chartData = inventory.byWaecType.map((item) => {
     const assignedCount = assignedCheckers[item.waec_type] || 0;
-    const waecRevenue = paidOrders
-      .filter(order => order.waec_type === item.waec_type)
-      .reduce((acc, order) => acc + (order.amount || (order.quantity * getPrice(item.waec_type))), 0);
-    const waecOrders = paidOrders.filter(order => order.waec_type === item.waec_type).length;
+    const waecOrders = paidOrders.filter(order => order.waec_type === item.waec_type);
+    const waecRevenue = waecOrders.reduce((acc, order) => acc + calculateOrderRevenue(order), 0);
+    
+    console.log(`${item.waec_type}: ${waecOrders.length} orders, revenue: ${waecRevenue}`);
     
     return {
       waecType: item.waec_type,
       revenue: waecRevenue,
-      orders: waecOrders,
+      orders: waecOrders.length,
       available: item.available || 0,
       total: item.total || 0,
     };
@@ -230,11 +295,58 @@ const Dashboard = () => {
 
       {/* Enhanced Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {dashboardStats.map((stat, index) => (
-          <div key={index} className="transform hover:scale-105 transition-transform duration-200">
-            <StatCard {...stat} />
-          </div>
-        ))}
+        <div className="transform hover:scale-105 transition-transform duration-200">
+          <StatCard
+            title="Total Revenue"
+            value={`₵${totals.totalRevenue.toLocaleString()}`}
+            subtitle="From completed orders"
+            icon={DollarSign}
+            color="purple"
+            trend={{
+              value: '12.5%',
+              direction: 'up'
+            }}
+          />
+        </div>
+        <div className="transform hover:scale-105 transition-transform duration-200">
+          <StatCard
+            title="Active Orders"
+            value={totalOrders.toLocaleString()}
+            subtitle={`${totals.pendingOrders} pending`}
+            icon={List}
+            color="blue"
+            trend={{
+              value: '8.2%',
+              direction: 'up'
+            }}
+          />
+        </div>
+        <div className="transform hover:scale-105 transition-transform duration-200">
+          <StatCard
+            title="Inventory Pool"
+            value={totals.totalCheckers.toLocaleString()}
+            subtitle={`${totals.availableCheckers} available`}
+            icon={Archive}
+            color="green"
+            trend={{
+              value: `${totals.utilizationRate}%`,
+              direction: 'up'
+            }}
+          />
+        </div>
+        <div className="transform hover:scale-105 transition-transform duration-200">
+          <StatCard
+            title="System Performance"
+            value={`${Math.round(dataLoadTime)}ms`}
+            subtitle="Data load time"
+            icon={Zap}
+            color="yellow"
+            trend={{
+              value: dataLoadTime < 2000 ? 'Optimal' : 'Slow',
+              direction: dataLoadTime < 2000 ? 'up' : 'down'
+            }}
+          />
+        </div>
       </div>
 
       {/* Enhanced Charts Section */}
