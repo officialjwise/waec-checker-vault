@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2, Shield, CheckCircle, X, CreditCard, Wifi } from "lucide-react";
+import { AlertCircle, Loader2, Shield, CheckCircle, X, CreditCard, Wifi, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { clientApi } from "@/services/clientApi";
@@ -17,7 +17,7 @@ const BuyType = () => {
   const location = useLocation();
   const { toast } = useToast();
   
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | undefined>(undefined);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("ghana");
@@ -121,7 +121,7 @@ const BuyType = () => {
   };
 
   const unitPrice = getUnitPrice();
-  const total = quantity * unitPrice;
+  const total = (quantity || 0) * unitPrice;
 
   const handlePhoneNumberChange = (e) => {
     let value = e.target.value;
@@ -130,12 +130,21 @@ const BuyType = () => {
   };
 
   const handleQuantityChange = (e) => {
-    const value = parseInt(e.target.value) || 0;
-    if (value < 1) {
-      setQuantity(1);
+    const value = e.target.value;
+    if (value === "") {
+      setQuantity(undefined);
     } else {
-      setQuantity(value);
+      const numValue = parseInt(value) || 0;
+      setQuantity(numValue);
     }
+  };
+
+  const incrementQuantity = () => {
+    setQuantity((prev) => (prev || 0) + 1);
+  };
+
+  const decrementQuantity = () => {
+    setQuantity((prev) => Math.max(0, (prev || 0) - 1));
   };
 
   const getFullPhoneNumber = () => {
@@ -216,6 +225,16 @@ const BuyType = () => {
       return;
     }
 
+    // Validate quantity for non-placement types
+    if (waecType !== "placement" && (!quantity || quantity < 1)) {
+      toast({
+        title: "Quantity required",
+        description: "Please select at least 1 checker to proceed.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (availabilityStatus === 'unavailable' || availabilityStatus === 'network-error') {
       toast({
         title: "Service Unavailable",
@@ -233,7 +252,7 @@ const BuyType = () => {
       
       const orderData = {
         waec_type: waecTypeFormatted,
-        quantity: waecType === "placement" ? 1 : quantity,
+        quantity: waecType === "placement" ? 1 : (quantity || 1),
         phone: formattedPhone,
         email: email.trim(),
       };
@@ -395,21 +414,42 @@ const BuyType = () => {
                   <div className="text-sm text-gray-600 mt-1">{examTypeFullNames[waecType]}</div>
                 </div>
 
-                {/* Quantity */}
+                {/* Quantity with Number Dialer */}
                 {waecType !== "placement" && (
                   <div className="space-y-2">
                     <Label htmlFor="quantity" className="text-base font-semibold text-gray-900">Quantity *</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={handleQuantityChange}
-                      className="h-12 text-lg border-2 focus:border-blue-500"
-                      required
-                    />
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={decrementQuantity}
+                        className="h-12 w-12 border-2 hover:bg-gray-100"
+                        disabled={!quantity || quantity <= 0}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="0"
+                        placeholder="Enter quantity"
+                        value={quantity || ""}
+                        onChange={handleQuantityChange}
+                        className="h-12 text-lg text-center border-2 focus:border-blue-500 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={incrementQuantity}
+                        className="h-12 w-12 border-2 hover:bg-gray-100"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                     <p className="text-sm text-gray-500">
-                      How many checkers do you need?
+                      How many checkers do you need? (minimum 1 required)
                     </p>
                   </div>
                 )}
@@ -489,7 +529,7 @@ const BuyType = () => {
                     {waecType !== "placement" && (
                       <div className="flex justify-between items-center">
                         <span className="text-gray-700">Quantity:</span>
-                        <span className="font-semibold text-lg">{quantity}</span>
+                        <span className="font-semibold text-lg">{quantity || 0}</span>
                       </div>
                     )}
                     <hr className="border-gray-300" />
