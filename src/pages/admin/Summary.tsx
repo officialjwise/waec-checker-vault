@@ -55,7 +55,6 @@ const Summary = () => {
           email: order.email,
           created_at: order.created_at,
           amount: order.amount,
-          total_amount: (order as any).total_amount, // Check for backend field
           payment_status: order.payment_status,
           payment_reference: order.payment_reference,
           allFields: Object.keys(order)
@@ -145,10 +144,20 @@ const Summary = () => {
     { total: 0, assigned: 0, available: 0 }
   );
 
-  // Backend uses fixed price of 17.5 GHS per checker
-  const BACKEND_PRICE_PER_CHECKER = 17.5;
+  const getPrice = (waecType: string) => {
+    const price = (() => {
+      switch (waecType) {
+        case 'BECE': return 50;
+        case 'WASSCE': return 75;
+        case 'NOVDEC': return 60;
+        default: return 65;
+      }
+    })();
+    console.log(`Price for ${waecType}: ${price}`);
+    return price;
+  };
 
-  // Calculate revenue for an order - use backend's total_amount or fallback to fixed price
+  // Calculate revenue for an order - since amount field doesn't exist, always use quantity * price
   const calculateOrderRevenue = (order: Order) => {
     console.log(`Calculating revenue for order ${order.id}:`, {
       quantity: order.quantity,
@@ -156,23 +165,15 @@ const Summary = () => {
       status: order.status,
       hasAmount: 'amount' in order,
       amount: order.amount,
-      hasTotalAmount: 'total_amount' in order,
-      total_amount: (order as any).total_amount,
       quantityType: typeof order.quantity,
       quantityValue: order.quantity
     });
     
-    // First try to use total_amount from backend
-    const totalAmount = (order as any).total_amount;
-    if (totalAmount !== undefined && totalAmount !== null) {
-      console.log(`Using backend total_amount: ${totalAmount}`);
-      return Number(totalAmount);
-    }
-    
-    // Fallback to backend's fixed price calculation
+    // Since the orders don't have amount field, calculate from quantity * price
+    const price = getPrice(order.waec_type);
     const quantity = Number(order.quantity) || 0;
-    const calculatedRevenue = quantity * BACKEND_PRICE_PER_CHECKER;
-    console.log(`Calculated from quantity × backend price: ${quantity} × ${BACKEND_PRICE_PER_CHECKER} = ${calculatedRevenue}`);
+    const calculatedRevenue = quantity * price;
+    console.log(`Calculated from quantity × price: ${quantity} × ${price} = ${calculatedRevenue}`);
     return calculatedRevenue;
   };
 
