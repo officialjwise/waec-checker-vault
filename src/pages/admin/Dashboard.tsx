@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
@@ -89,9 +90,9 @@ const Dashboard = () => {
       console.log('Final filtered paid orders count:', filteredPaidOrders.length);
       setPaidOrders(filteredPaidOrders);
 
-      // Optimized assigned checkers fetch
+      // Updated WAEC types to include CSSPS
       const assignedCheckersData: {[key: string]: number} = {};
-      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC'];
+      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC', 'CSSPS'];
       
       const assignedPromises = waecTypes.map(async (waecType) => {
         try {
@@ -137,13 +138,14 @@ const Dashboard = () => {
     fetchDashboardData(true);
   };
 
-  // Use the same price logic as Summary page
+  // Use the same price logic as Summary page - updated to include CSSPS
   const getPrice = (waecType: string) => {
     const price = (() => {
       switch (waecType) {
         case 'BECE': return 50;
         case 'WASSCE': return 75;
         case 'NOVDEC': return 60;
+        case 'CSSPS': return 80; // Price for school placement checkers
         default: return 65;
       }
     })();

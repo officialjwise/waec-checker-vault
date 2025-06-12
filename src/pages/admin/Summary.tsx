@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
 import AdminCharts from '@/components/AdminCharts';
@@ -103,9 +104,9 @@ const Summary = () => {
       setInventory(inventoryData);
       setPaidOrders(filteredPaidOrders);
 
-      // Fetch assigned checkers for each WAEC type
+      // Fetch assigned checkers for each WAEC type - updated to include CSSPS
       const assignedCheckersData: {[key: string]: number} = {};
-      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC'];
+      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC', 'CSSPS'];
       
       for (const waecType of waecTypes) {
         try {
@@ -144,12 +145,14 @@ const Summary = () => {
     { total: 0, assigned: 0, available: 0 }
   );
 
+  // Updated to include CSSPS pricing
   const getPrice = (waecType: string) => {
     const price = (() => {
       switch (waecType) {
         case 'BECE': return 50;
         case 'WASSCE': return 75;
         case 'NOVDEC': return 60;
+        case 'CSSPS': return 80; // Price for school placement checkers
         default: return 65;
       }
     })();
