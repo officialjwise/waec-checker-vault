@@ -20,6 +20,7 @@ const Summary = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('=== STARTING DATA FETCH ===');
       console.log('Fetching summary data...');
       
       // Get all orders and inventory data
@@ -29,19 +30,78 @@ const Summary = () => {
       ]);
       
       console.log('Summary data fetched:', inventoryData);
-      console.log('All orders fetched:', allOrdersData);
+      console.log('=== ALL ORDERS ANALYSIS ===');
+      console.log('Total orders fetched:', allOrdersData.length);
+      console.log('All orders raw data:', allOrdersData);
       
-      // Filter for paid orders - only check status since payment_status doesn't exist
-      const paidOrdersFiltered = allOrdersData.filter(order => 
-        order.status === 'paid'
-      );
+      // Analyze order statuses
+      const statusCount = allOrdersData.reduce((acc, order) => {
+        const status = order.status || 'no_status';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as {[key: string]: number});
       
-      console.log('Filtered paid orders (status === paid):', paidOrdersFiltered);
-      console.log('Number of paid orders after filtering:', paidOrdersFiltered.length);
-      console.log('Sample paid orders structure:', paidOrdersFiltered.slice(0, 3));
+      console.log('Order status breakdown:', statusCount);
+      
+      // Analyze a few sample orders in detail
+      console.log('=== SAMPLE ORDERS ANALYSIS ===');
+      allOrdersData.slice(0, 5).forEach((order, index) => {
+        console.log(`Sample Order ${index + 1}:`, {
+          id: order.id,
+          status: order.status,
+          quantity: order.quantity,
+          waec_type: order.waec_type,
+          phone: order.phone,
+          email: order.email,
+          created_at: order.created_at,
+          amount: order.amount,
+          payment_status: order.payment_status,
+          payment_reference: order.payment_reference,
+          allFields: Object.keys(order)
+        });
+      });
+      
+      // Filter for paid orders - try multiple approaches
+      console.log('=== FILTERING FOR PAID ORDERS ===');
+      
+      // Approach 1: status === 'paid'
+      const paidByStatus = allOrdersData.filter(order => order.status === 'paid');
+      console.log('Orders with status === "paid":', paidByStatus.length);
+      
+      // Approach 2: payment_status === 'paid' (if field exists)
+      const paidByPaymentStatus = allOrdersData.filter(order => order.payment_status === 'paid');
+      console.log('Orders with payment_status === "paid":', paidByPaymentStatus.length);
+      
+      // Approach 3: completed orders
+      const completedOrders = allOrdersData.filter(order => order.status === 'completed');
+      console.log('Orders with status === "completed":', completedOrders.length);
+      
+      // Approach 4: orders with payment_reference (indicating payment was made)
+      const ordersWithPaymentRef = allOrdersData.filter(order => order.payment_reference && order.payment_reference.trim() !== '');
+      console.log('Orders with payment_reference:', ordersWithPaymentRef.length);
+      
+      // Use the most appropriate filtering approach
+      let filteredPaidOrders: Order[];
+      
+      if (paidByStatus.length > 0) {
+        console.log('Using status === "paid" filter');
+        filteredPaidOrders = paidByStatus;
+      } else if (completedOrders.length > 0) {
+        console.log('Using status === "completed" filter (no paid status found)');
+        filteredPaidOrders = completedOrders;
+      } else if (ordersWithPaymentRef.length > 0) {
+        console.log('Using payment_reference filter (no status-based filter worked)');
+        filteredPaidOrders = ordersWithPaymentRef;
+      } else {
+        console.log('No clear paid orders found, using all orders for calculation');
+        filteredPaidOrders = allOrdersData;
+      }
+      
+      console.log('Final filtered paid orders count:', filteredPaidOrders.length);
+      console.log('Sample filtered orders:', filteredPaidOrders.slice(0, 3));
       
       setInventory(inventoryData);
-      setPaidOrders(paidOrdersFiltered);
+      setPaidOrders(filteredPaidOrders);
 
       // Fetch assigned checkers for each WAEC type
       const assignedCheckersData: {[key: string]: number} = {};
@@ -104,7 +164,9 @@ const Summary = () => {
       waec_type: order.waec_type,
       status: order.status,
       hasAmount: 'amount' in order,
-      amount: order.amount
+      amount: order.amount,
+      quantityType: typeof order.quantity,
+      quantityValue: order.quantity
     });
     
     // Since the orders don't have amount field, calculate from quantity * price
