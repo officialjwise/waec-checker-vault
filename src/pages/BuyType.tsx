@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,7 +122,7 @@ const BuyType = () => {
   }, [location.state]);
 
   const getUnitPrice = () => {
-    return waecType === "placement" || waecType === "CSSPS" || waecType === "cssps" ? 20 : 17.5;
+    return waecType === "placement" ? 20 : 17.5;
   };
 
   const unitPrice = getUnitPrice();
@@ -222,8 +223,8 @@ const BuyType = () => {
       return;
     }
 
-    // Validate quantity for non-placement types
-    if (waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps" && (!quantity || quantity < 1)) {
+    // Validate quantity for all types except placement
+    if (waecType !== "placement" && (!quantity || quantity < 1)) {
       toast({
         title: "Quantity required",
         description: "Please select at least 1 checker to proceed.",
@@ -249,7 +250,7 @@ const BuyType = () => {
       
       const orderData = {
         waec_type: waecTypeFormatted,
-        quantity: waecType === "placement" || waecType === "CSSPS" || waecType === "cssps" ? 1 : (quantity || 1),
+        quantity: waecType === "placement" ? 1 : (quantity || 1),
         phone: formattedPhone,
         email: email.trim() || null, // Send null if email is empty
       };
@@ -305,8 +306,8 @@ const BuyType = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
       <Header 
         showBackButton={true}
-        backTo={waecType === "placement" || waecType === "CSSPS" || waecType === "cssps" ? "/" : "/buy"}
-        title={`Buy ${examTypeNames[waecType]} ${(waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps") ? "Result Checker" : ""}`}
+        backTo={waecType === "placement" ? "/" : "/buy"}
+        title={`Buy ${examTypeNames[waecType]} ${waecType !== "placement" ? "Result Checker" : ""}`}
         subtitle={examTypeFullNames[waecType]}
       />
 
@@ -406,13 +407,13 @@ const BuyType = () => {
                     You are purchasing
                   </h3>
                   <div className="text-lg font-medium text-gray-800">
-                    {examTypeNames[waecType]} {(waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps") && "Result Checker"}
+                    {examTypeNames[waecType]} {waecType !== "placement" && "Result Checker"}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">{examTypeFullNames[waecType]}</div>
                 </div>
 
-                {/* Quantity with Number Dialer */}
-                {(waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps") && (
+                {/* Quantity with Number Dialer - Now available for all types except placement */}
+                {waecType !== "placement" && (
                   <div className="space-y-2">
                     <Label htmlFor="quantity" className="text-base font-semibold text-gray-900">Quantity *</Label>
                     <div className="flex items-center gap-3">
