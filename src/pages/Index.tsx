@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,7 +77,6 @@ const Index = () => {
                   </ul>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-blue-600 mb-3">Starting from ¢17.50</p>
                   <Link to="/buy">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                       Buy Now
@@ -89,7 +87,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          {/* Placement Checker Card - Fixed to use CSSPS instead of placement */}
+          {/* Placement Checker Card */}
           <Card className="hover:shadow-2xl transition-all duration-300 border-2 hover:border-purple-300 transform hover:-translate-y-2 bg-gradient-to-br from-purple-50 to-white">
             <CardHeader className="text-center pb-4">
               <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
@@ -122,7 +120,6 @@ const Index = () => {
                   </ul>
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-purple-600 mb-3">¢20.00</p>
                   <Link to="/buy/CSSPS">
                     <Button className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                       Check Placement
