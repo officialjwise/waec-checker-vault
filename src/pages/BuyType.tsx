@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,7 +121,11 @@ const BuyType = () => {
   }, [location.state]);
 
   const getUnitPrice = () => {
-    return waecType === "placement" ? 20 : 17.5;
+    // Updated pricing: CSSPS = 20, all others = 17.5
+    if (waecType === "CSSPS" || waecType === "cssps") {
+      return 20;
+    }
+    return 17.5;
   };
 
   const unitPrice = getUnitPrice();
