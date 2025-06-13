@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
@@ -138,17 +137,9 @@ const Dashboard = () => {
     fetchDashboardData(true);
   };
 
-  // Use the same price logic as Summary page - updated to include CSSPS
+  // Use the same price logic as Summary page - corrected pricing: CSSPS = 20, all others = 17.5
   const getPrice = (waecType: string) => {
-    const price = (() => {
-      switch (waecType) {
-        case 'BECE': return 50;
-        case 'WASSCE': return 75;
-        case 'NOVDEC': return 60;
-        case 'CSSPS': return 80; // Price for school placement checkers
-        default: return 65;
-      }
-    })();
+    const price = waecType === 'CSSPS' ? 20 : 17.5;
     console.log(`Price for ${waecType}: ${price}`);
     return price;
   };
