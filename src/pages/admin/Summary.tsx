@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import StatCard from '@/components/StatCard';
 import AdminCharts from '@/components/AdminCharts';
@@ -145,17 +144,9 @@ const Summary = () => {
     { total: 0, assigned: 0, available: 0 }
   );
 
-  // Updated to include CSSPS pricing
+  // Updated to use current pricing: CSSPS = 20, all others = 17.5
   const getPrice = (waecType: string) => {
-    const price = (() => {
-      switch (waecType) {
-        case 'BECE': return 50;
-        case 'WASSCE': return 75;
-        case 'NOVDEC': return 60;
-        case 'CSSPS': return 80; // Price for school placement checkers
-        default: return 65;
-      }
-    })();
+    const price = waecType === 'CSSPS' ? 20 : 17.5;
     console.log(`Price for ${waecType}: ${price}`);
     return price;
   };

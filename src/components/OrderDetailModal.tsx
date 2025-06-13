@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Phone, Mail, Calendar, Package, User, Clock, Hash, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,10 +36,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
+  // Updated price calculation to match current pricing
   const calculateTotal = (quantity: number, waecType: string) => {
     if (order.amount) return order.amount;
-    const prices = { BECE: 50, WASSCE: 75, NOVDEC: 60 };
-    return quantity * (prices[waecType as keyof typeof prices] || 50);
+    // Current pricing: CSSPS = 20, all others = 17.5
+    const price = waecType === 'CSSPS' ? 20 : 17.5;
+    return quantity * price;
   };
 
   const formatStatusText = (status: string) => {
