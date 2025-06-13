@@ -47,19 +47,6 @@ const Header = ({ showBackButton = false, backTo = "/", title, subtitle }: Heade
               </div>
             </div>
           </div>
-          
-          {/* Reduced WAEC Logo size */}
-          <div className="flex items-center space-x-3">
-            <img 
-              src="/lovable-uploads/312005bc-9615-463e-89bf-e6d4fc6d5e90.png" 
-              alt="WAEC Logo" 
-              className="w-12 h-12 object-contain"
-            />
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-700">Official Partner</p>
-              <p className="text-xs text-gray-500">West African Examinations Council</p>
-            </div>
-          </div>
         </div>
       </div>
     </header>
