@@ -34,14 +34,18 @@ const BuyType = () => {
     bece: "BECE",
     wassce: "WASSCE", 
     novdec: "NOVDEC",
-    placement: "Placement Checker"
+    placement: "Placement Checker",
+    CSSPS: "CSSPS",
+    cssps: "CSSPS"
   };
 
   const examTypeFullNames = {
     bece: "Basic Education Certificate Examination",
     wassce: "West African Senior School Certificate Examination",
     novdec: "November/December WASSCE",
-    placement: "School Placement Checker"
+    placement: "School Placement Checker",
+    CSSPS: "Computerized School Selection and Placement System",
+    cssps: "Computerized School Selection and Placement System"
   };
 
   // Check availability on component mount
@@ -117,7 +121,7 @@ const BuyType = () => {
   }, [location.state]);
 
   const getUnitPrice = () => {
-    return waecType === "placement" ? 20 : 17.5;
+    return waecType === "placement" || waecType === "CSSPS" || waecType === "cssps" ? 20 : 17.5;
   };
 
   const unitPrice = getUnitPrice();
@@ -153,6 +157,7 @@ const BuyType = () => {
   };
 
   const validateEmail = (email: string): boolean => {
+    if (!email.trim()) return true; // Email is now optional
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
@@ -207,16 +212,8 @@ const BuyType = () => {
       return;
     }
 
-    if (!email.trim()) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address to proceed.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!validateEmail(email)) {
+    // Email validation - only validate format if email is provided
+    if (email.trim() && !validateEmail(email)) {
       toast({
         title: "Invalid email",
         description: "Please enter a valid email address.",
@@ -226,7 +223,7 @@ const BuyType = () => {
     }
 
     // Validate quantity for non-placement types
-    if (waecType !== "placement" && (!quantity || quantity < 1)) {
+    if (waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps" && (!quantity || quantity < 1)) {
       toast({
         title: "Quantity required",
         description: "Please select at least 1 checker to proceed.",
@@ -252,9 +249,9 @@ const BuyType = () => {
       
       const orderData = {
         waec_type: waecTypeFormatted,
-        quantity: waecType === "placement" ? 1 : (quantity || 1),
+        quantity: waecType === "placement" || waecType === "CSSPS" || waecType === "cssps" ? 1 : (quantity || 1),
         phone: formattedPhone,
-        email: email.trim(),
+        email: email.trim() || null, // Send null if email is empty
       };
 
       console.log('Submitting order:', orderData);
@@ -308,8 +305,8 @@ const BuyType = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
       <Header 
         showBackButton={true}
-        backTo={waecType === "placement" ? "/" : "/buy"}
-        title={`Buy ${examTypeNames[waecType]} ${waecType !== "placement" ? "Result Checker" : ""}`}
+        backTo={waecType === "placement" || waecType === "CSSPS" || waecType === "cssps" ? "/" : "/buy"}
+        title={`Buy ${examTypeNames[waecType]} ${(waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps") ? "Result Checker" : ""}`}
         subtitle={examTypeFullNames[waecType]}
       />
 
@@ -409,13 +406,13 @@ const BuyType = () => {
                     You are purchasing
                   </h3>
                   <div className="text-lg font-medium text-gray-800">
-                    {examTypeNames[waecType]} {waecType !== "placement" && "Result Checker"}
+                    {examTypeNames[waecType]} {(waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps") && "Result Checker"}
                   </div>
                   <div className="text-sm text-gray-600 mt-1">{examTypeFullNames[waecType]}</div>
                 </div>
 
                 {/* Quantity with Number Dialer */}
-                {waecType !== "placement" && (
+                {(waecType !== "placement" && waecType !== "CSSPS" && waecType !== "cssps") && (
                   <div className="space-y-2">
                     <Label htmlFor="quantity" className="text-base font-semibold text-gray-900">Quantity *</Label>
                     <div className="flex items-center gap-3">
@@ -498,20 +495,19 @@ const BuyType = () => {
                   )}
                 </div>
 
-                {/* Email */}
+                {/* Email - Now Optional */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-base font-semibold text-gray-900">Email Address *</Label>
+                  <Label htmlFor="email" className="text-base font-semibold text-gray-900">Email Address (Optional)</Label>
                   <Input
                     id="email"
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder="your@email.com (optional)"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-12 text-lg border-2 focus:border-blue-500"
-                    required
                   />
                   <p className="text-sm text-gray-500">
-                    Email backup of your {waecType === "placement" ? "placement results" : "checkers"} (required)
+                    Optional email backup of your {(waecType === "placement" || waecType === "CSSPS" || waecType === "cssps") ? "placement results" : "checkers"}
                   </p>
                 </div>
 
