@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://waec-backend.onrender.com/api';
+const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://waec-backend-0buq.onrender.com/api';
 
 // Get API Key from environment variables
 const API_KEY = import.meta.env.VITE_API_KEY || '3b59ed6cbc63193bd6c2a0294b2261e6ea7d748e0a0b2eab186046ae7c95cac7';

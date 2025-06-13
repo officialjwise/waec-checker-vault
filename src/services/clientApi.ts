@@ -1,4 +1,4 @@
-const BASE_URL = 'https://waec-backend.onrender.com/api';
+const BASE_URL = 'https://waec-backend-0buq.onrender.com/api';
 
 export interface CheckerAvailability {
   available: boolean;

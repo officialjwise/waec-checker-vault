@@ -25,8 +25,12 @@ const Header = ({ showBackButton = false, backTo = "/", title, subtitle }: Heade
               </Link>
             )}
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-                <GraduationCap className="h-7 w-7 text-white" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center">
+                <img 
+                  src="/lovable-uploads/5dfb2299-d472-4b3d-bd04-74456bd167ed.png" 
+                  alt="YoungPress Logo" 
+                  className="w-12 h-12 object-contain"
+                />
               </div>
               <div>
                 {title ? (
