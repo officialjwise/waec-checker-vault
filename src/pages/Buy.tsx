@@ -122,8 +122,8 @@ const Buy = () => {
           })}
         </div>
 
-        {/* Pricing Tiers Info */}
-        <div className="mt-12 bg-white rounded-lg shadow-sm p-6 max-w-4xl mx-auto">
+        {/* Pricing Tiers Info - Moved to top */}
+        <div className="mt-8 bg-white rounded-lg shadow-sm p-6 max-w-4xl mx-auto">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Tiered Pricing</h3>
           <div className="grid md:grid-cols-4 gap-4 text-center">
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -146,7 +146,7 @@ const Buy = () => {
         </div>
 
         {/* Additional Info */}
-        <div className="mt-12 bg-white rounded-lg shadow-sm p-6 max-w-3xl mx-auto">
+        <div className="mt-8 bg-white rounded-lg shadow-sm p-6 max-w-3xl mx-auto">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Important Information</h3>
           <ul className="space-y-2 text-gray-600">
             <li className="flex items-start">
