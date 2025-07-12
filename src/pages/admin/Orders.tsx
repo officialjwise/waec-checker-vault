@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Eye, Phone, Mail, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -121,10 +120,15 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
-  // Updated price calculation to match current pricing
+  // Updated price calculation to include CTVET pricing
   const calculateAmount = (quantity: number, waecType: string) => {
-    // Current pricing: CSSPS = 20, all others = 17.5
-    const price = waecType === 'CSSPS' ? 20 : 17.5;
+    // Updated pricing: CSSPS = 20, CTVET = 15, all others = 17.5
+    let price = 17.5; // default price
+    if (waecType === 'CSSPS') {
+      price = 20;
+    } else if (waecType === 'CTVET') {
+      price = 15;
+    }
     return quantity * price;
   };
 
@@ -198,6 +202,7 @@ const Orders = () => {
             <option value="WASSCE">WASSCE</option>
             <option value="NOVDEC">NOVDEC</option>
             <option value="CSSPS">CSSPS</option>
+            <option value="CTVET">CTVET</option>
           </select>
 
           {/* Status Filter */}

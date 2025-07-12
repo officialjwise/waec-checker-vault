@@ -170,7 +170,7 @@ const UploadCheckers = () => {
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• File must be in CSV format</li>
           <li>• Required headers: <code className="bg-blue-100 px-1 rounded">serial</code>, <code className="bg-blue-100 px-1 rounded">pin</code>, <code className="bg-blue-100 px-1 rounded">waec_type</code></li>
-          <li>• WAEC types: BECE, WASSCE, NOVDEC</li>
+          <li>• WAEC types: BECE, WASSCE, NOVDEC, CSSPS, CTVET</li>
           <li>• Duplicate serials will be skipped automatically</li>
           <li>• Preview shows up to 100 rows per page</li>
         </ul>

@@ -103,9 +103,9 @@ const Summary = () => {
       setInventory(inventoryData);
       setPaidOrders(filteredPaidOrders);
 
-      // Fetch assigned checkers for each WAEC type - updated to include CSSPS
+      // Fetch assigned checkers for each WAEC type - updated to include CTVET
       const assignedCheckersData: {[key: string]: number} = {};
-      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC', 'CSSPS'];
+      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC', 'CSSPS', 'CTVET'];
       
       for (const waecType of waecTypes) {
         try {
@@ -144,11 +144,11 @@ const Summary = () => {
     { total: 0, assigned: 0, available: 0 }
   );
 
-  // Updated to use current pricing: CSSPS = 20, all others = 17.5
+  // Updated pricing to include CTVET
   const getPrice = (waecType: string) => {
-    const price = waecType === 'CSSPS' ? 20 : 17.5;
-    console.log(`Price for ${waecType}: ${price}`);
-    return price;
+    if (waecType === 'CSSPS') return 20;
+    if (waecType === 'CTVET') return 15;
+    return 17.5; // BECE, WASSCE, NOVDEC
   };
 
   // Calculate revenue for an order - since amount field doesn't exist, always use quantity * price
