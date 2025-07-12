@@ -89,9 +89,9 @@ const Dashboard = () => {
       console.log('Final filtered paid orders count:', filteredPaidOrders.length);
       setPaidOrders(filteredPaidOrders);
 
-      // Updated WAEC types to include CSSPS
+      // Updated WAEC types to include CTVET
       const assignedCheckersData: {[key: string]: number} = {};
-      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC', 'CSSPS'];
+      const waecTypes = ['WASSCE', 'BECE', 'NOVDEC', 'CSSPS', 'CTVET'];
       
       const assignedPromises = waecTypes.map(async (waecType) => {
         try {
@@ -137,11 +137,11 @@ const Dashboard = () => {
     fetchDashboardData(true);
   };
 
-  // Use the same price logic as Summary page - corrected pricing: CSSPS = 20, all others = 17.5
+  // Updated price logic to include CTVET
   const getPrice = (waecType: string) => {
-    const price = waecType === 'CSSPS' ? 20 : 17.5;
-    console.log(`Price for ${waecType}: ${price}`);
-    return price;
+    if (waecType === 'CSSPS') return 20;
+    if (waecType === 'CTVET') return 15;
+    return 17.5; // BECE, WASSCE, NOVDEC
   };
 
   // Use the same revenue calculation logic as Summary page
