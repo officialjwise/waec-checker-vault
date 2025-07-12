@@ -144,14 +144,15 @@ const Summary = () => {
     { total: 0, assigned: 0, available: 0 }
   );
 
-  // Updated pricing to include CTVET
-  const getPrice = (waecType: string) => {
-    if (waecType === 'CSSPS') return 20;
-    if (waecType === 'CTVET') return 15;
-    return 17.5; // BECE, WASSCE, NOVDEC
+  // Updated tiered pricing calculation
+  const getPrice = (quantity: number) => {
+    if (quantity >= 50) return 15.0;
+    if (quantity >= 20) return 16.0;
+    if (quantity >= 10) return 16.5;
+    return 17.5; // 1-9 checkers
   };
 
-  // Calculate revenue for an order - since amount field doesn't exist, always use quantity * price
+  // Calculate revenue for an order using tiered pricing
   const calculateOrderRevenue = (order: Order) => {
     console.log(`Calculating revenue for order ${order.id}:`, {
       quantity: order.quantity,
@@ -163,11 +164,11 @@ const Summary = () => {
       quantityValue: order.quantity
     });
     
-    // Since the orders don't have amount field, calculate from quantity * price
-    const price = getPrice(order.waec_type);
+    // Use tiered pricing calculation
     const quantity = Number(order.quantity) || 0;
+    const price = getPrice(quantity);
     const calculatedRevenue = quantity * price;
-    console.log(`Calculated from quantity × price: ${quantity} × ${price} = ${calculatedRevenue}`);
+    console.log(`Calculated from quantity × tiered price: ${quantity} × ${price} = ${calculatedRevenue}`);
     return calculatedRevenue;
   };
 

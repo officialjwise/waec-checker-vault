@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Search, GraduationCap, MapPin, CheckCircle, Users, Award, Shield, MessageCircle, Building } from "lucide-react";
+import { ShoppingCart, Search, GraduationCap, MapPin, CheckCircle, Users, Award, Shield, MessageCircle, Building, Tag } from "lucide-react";
 import Header from "@/components/Header";
 
 const Index = () => {
@@ -100,7 +100,6 @@ const Index = () => {
                   </ul>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2">Starting from ¢15.00 each</p>
                   <Link to="/buy">
                     <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                       Buy Now
@@ -246,6 +245,80 @@ const Index = () => {
           </Card>
         </div>
 
+        {/* Tiered Pricing Section */}
+        <div className="mb-12">
+          <div className="text-center mb-8">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">Bulk Discount Pricing</h3>
+            <p className="text-lg text-gray-600">Save more when you buy more checkers</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            {/* Tier 1 */}
+            <Card className="border-2 border-gray-200 hover:border-blue-300 transition-all duration-300 hover:shadow-lg">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full flex items-center justify-center mb-4">
+                  <Tag className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-lg font-bold text-gray-900">Standard</CardTitle>
+                <CardDescription>1-9 Checkers</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <div className="text-3xl font-bold text-blue-600 mb-2">₵17.50</div>
+                <p className="text-sm text-gray-600">per checker</p>
+              </CardContent>
+            </Card>
+
+            {/* Tier 2 */}
+            <Card className="border-2 border-green-200 hover:border-green-300 transition-all duration-300 hover:shadow-lg">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center mb-4">
+                  <Tag className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-lg font-bold text-gray-900">Value</CardTitle>
+                <CardDescription>10-19 Checkers</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <div className="text-3xl font-bold text-green-600 mb-2">₵16.50</div>
+                <p className="text-sm text-gray-600">per checker</p>
+                <div className="mt-2 text-xs text-green-600 font-medium">Save ₵1.00 each</div>
+              </CardContent>
+            </Card>
+
+            {/* Tier 3 */}
+            <Card className="border-2 border-purple-200 hover:border-purple-300 transition-all duration-300 hover:shadow-lg">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-500 rounded-full flex items-center justify-center mb-4">
+                  <Tag className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-lg font-bold text-gray-900">Business</CardTitle>
+                <CardDescription>20-49 Checkers</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <div className="text-3xl font-bold text-purple-600 mb-2">₵16.00</div>
+                <p className="text-sm text-gray-600">per checker</p>
+                <div className="mt-2 text-xs text-purple-600 font-medium">Save ₵1.50 each</div>
+              </CardContent>
+            </Card>
+
+            {/* Tier 4 */}
+            <Card className="border-2 border-orange-200 hover:border-orange-300 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-orange-50 to-white">
+              <CardHeader className="text-center pb-4">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-br from-orange-400 to-orange-500 rounded-full flex items-center justify-center mb-4">
+                  <Award className="h-8 w-8 text-white" />
+                </div>
+                <CardTitle className="text-lg font-bold text-gray-900">Wholesale</CardTitle>
+                <CardDescription>50+ Checkers</CardDescription>
+              </CardHeader>
+              <CardContent className="text-center">
+                <div className="text-3xl font-bold text-orange-600 mb-2">₵15.00</div>
+                <p className="text-sm text-gray-600">per checker</p>
+                <div className="mt-2 text-xs text-orange-600 font-medium">Save ₵2.50 each</div>
+                <div className="mt-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">Best Value!</div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Additional Info Section */}
         <div className="mt-20 text-center">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-4xl mx-auto border border-gray-100">
@@ -264,7 +337,7 @@ const Index = () => {
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-gray-800 mb-1">Phone Support</p>
-                <p className="text-sm text-gray-600">+233 123 456 789<br/>Toll-free calls</p>
+                <p className="text-sm text-gray-600">+233 55 753 8158<br/>Toll-free calls</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-gray-800 mb-1">Email Support</p>

@@ -120,16 +120,20 @@ const Orders = () => {
     setSelectedOrder(null);
   };
 
-  // Updated price calculation to include CTVET pricing
+  // Updated tiered pricing calculation
   const calculateAmount = (quantity: number, waecType: string) => {
-    // Updated pricing: CSSPS = 20, CTVET = 15, all others = 17.5
-    let price = 17.5; // default price
-    if (waecType === 'CSSPS') {
-      price = 20;
-    } else if (waecType === 'CTVET') {
-      price = 15;
+    let pricePerUnit = 17.5; // Default price for 1-9 checkers
+    
+    if (quantity >= 50) {
+      pricePerUnit = 15.0;
+    } else if (quantity >= 20) {
+      pricePerUnit = 16.0;
+    } else if (quantity >= 10) {
+      pricePerUnit = 16.5;
     }
-    return quantity * price;
+    // 1-9 checkers remain at 17.5
+    
+    return quantity * pricePerUnit;
   };
 
   const handlePageChange = (page: number) => {
