@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, GraduationCap, Calendar } from "lucide-react";
+import { ArrowLeft, BookOpen, GraduationCap, Calendar, Building } from "lucide-react";
 
 const Buy = () => {
   const examTypes = [
@@ -29,8 +29,23 @@ const Buy = () => {
       description: "Private candidates and repeat examination",
       icon: Calendar,
       color: "purple"
+    },
+    {
+      type: "ctvet",
+      title: "CTVET",
+      fullName: "Council for Technical and Vocational Education and Training",
+      description: "For technical and vocational education certificates",
+      icon: Building,
+      color: "orange"
     }
   ];
+
+  const getPriceDisplay = (quantity: number) => {
+    if (quantity >= 50) return "¢15.00";
+    if (quantity >= 20) return "¢16.00";
+    if (quantity >= 10) return "¢16.50";
+    return "¢17.50";
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -59,17 +74,18 @@ const Buy = () => {
             Select Examination Type
           </h2>
           <p className="text-gray-600">
-            Choose the type of WAEC examination you need result checkers for
+            Choose the type of examination you need result checkers for
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {examTypes.map((exam) => {
             const IconComponent = exam.icon;
             const colorClasses = {
               blue: "bg-blue-100 text-blue-600 hover:border-blue-200",
               green: "bg-green-100 text-green-600 hover:border-green-200",
-              purple: "bg-purple-100 text-purple-600 hover:border-purple-200"
+              purple: "bg-purple-100 text-purple-600 hover:border-purple-200",
+              orange: "bg-orange-100 text-orange-600 hover:border-orange-200"
             };
 
             return (
@@ -78,7 +94,7 @@ const Buy = () => {
                   <div className={`mx-auto w-16 h-16 ${colorClasses[exam.color]} rounded-full flex items-center justify-center mb-4`}>
                     <IconComponent className="h-8 w-8" />
                   </div>
-                  <CardTitle className="text-2xl font-bold text-gray-900">
+                  <CardTitle className="text-xl font-bold text-gray-900">
                     {exam.title}
                   </CardTitle>
                   <CardDescription className="text-sm font-medium text-gray-700">
@@ -86,11 +102,14 @@ const Buy = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-600 text-center mb-6">
+                  <p className="text-gray-600 text-center mb-6 text-sm">
                     {exam.description}
                   </p>
                   <div className="text-center">
-                    <p className="text-lg font-semibold text-green-600 mb-4">¢17.5 per checker</p>
+                    <div className="mb-3">
+                      <p className="text-lg font-semibold text-green-600">Starting from ¢15.00</p>
+                      <p className="text-xs text-gray-500">Tiered pricing available</p>
+                    </div>
                     <Link to={`/buy/${exam.type}`}>
                       <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                         Select {exam.title}
@@ -103,6 +122,29 @@ const Buy = () => {
           })}
         </div>
 
+        {/* Pricing Tiers Info */}
+        <div className="mt-12 bg-white rounded-lg shadow-sm p-6 max-w-4xl mx-auto">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Tiered Pricing</h3>
+          <div className="grid md:grid-cols-4 gap-4 text-center">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-semibold text-blue-600">1-9 Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢17.50 each</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="font-semibold text-green-600">10-19 Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢16.50 each</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-semibold text-purple-600">20-49 Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢16.00 each</p>
+            </div>
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="font-semibold text-orange-600">50+ Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢15.00 each</p>
+            </div>
+          </div>
+        </div>
+
         {/* Additional Info */}
         <div className="mt-12 bg-white rounded-lg shadow-sm p-6 max-w-3xl mx-auto">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">Important Information</h3>
@@ -113,7 +155,7 @@ const Buy = () => {
             </li>
             <li className="flex items-start">
               <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
-              Results are available immediately after WAEC publishes them
+              Results are available immediately after results are published
             </li>
             <li className="flex items-start">
               <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
@@ -122,6 +164,10 @@ const Buy = () => {
             <li className="flex items-start">
               <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
               All purchases are saved to your phone number for easy retrieval
+            </li>
+            <li className="flex items-start">
+              <span className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2"></span>
+              Bulk discounts automatically applied based on quantity
             </li>
           </ul>
         </div>

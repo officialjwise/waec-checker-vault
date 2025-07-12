@@ -74,7 +74,7 @@ class ClientApiService {
       
       if (waecType) {
         // Ensure waecType is uppercase and valid
-        const validTypes = ['BECE', 'WASSCE', 'NOVDEC', 'CSSPS'];
+        const validTypes = ['BECE', 'WASSCE', 'NOVDEC', 'CTVET', 'CSSPS'];
         const upperWaecType = waecType.toUpperCase();
         
         if (!validTypes.includes(upperWaecType)) {
@@ -439,6 +439,7 @@ class ClientApiService {
       'bece': 'BECE',
       'wassce': 'WASSCE',
       'novdec': 'NOVDEC',
+      'ctvet': 'CTVET',
       'placement': 'PLACEMENT'
     };
     

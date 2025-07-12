@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +35,7 @@ const BuyType = () => {
     bece: "BECE",
     wassce: "WASSCE", 
     novdec: "NOVDEC",
+    ctvet: "CTVET",
     placement: "Placement Checker",
     CSSPS: "CSSPS",
     cssps: "CSSPS"
@@ -43,6 +45,7 @@ const BuyType = () => {
     bece: "Basic Education Certificate Examination",
     wassce: "West African Senior School Certificate Examination",
     novdec: "November/December WASSCE",
+    ctvet: "Council for Technical and Vocational Education and Training",
     placement: "School Placement Checker",
     CSSPS: "Computerized School Selection and Placement System",
     cssps: "Computerized School Selection and Placement System"
@@ -120,15 +123,20 @@ const BuyType = () => {
     }
   }, [location.state]);
 
-  const getUnitPrice = () => {
-    // Updated pricing: CSSPS = 20, all others = 17.5
-    if (waecType === "CSSPS" || waecType === "cssps") {
+  const getUnitPrice = (qty: number = 1) => {
+    // CSSPS placement checker has fixed pricing
+    if (waecType === "CSSPS" || waecType === "cssps" || waecType === "placement") {
       return 20;
     }
+    
+    // Dynamic pricing for result checkers
+    if (qty >= 50) return 15.0;
+    if (qty >= 20) return 16.0;
+    if (qty >= 10) return 16.5;
     return 17.5;
   };
 
-  const unitPrice = getUnitPrice();
+  const unitPrice = getUnitPrice(quantity || 1);
   const total = (quantity || 0) * unitPrice;
 
   const handlePhoneNumberChange = (e) => {
@@ -452,6 +460,17 @@ const BuyType = () => {
                     <p className="text-sm text-gray-500">
                       How many checkers do you need? (minimum 1 required)
                     </p>
+                    {/* Dynamic Pricing Info */}
+                    {quantity && quantity > 1 && (
+                      <div className="bg-green-50 p-3 rounded-lg border border-green-200 mt-2">
+                        <p className="text-sm font-medium text-green-800">
+                          {quantity >= 50 && "Bulk discount applied! 50+ checkers: ¢15.00 each"}
+                          {quantity >= 20 && quantity < 50 && "Bulk discount applied! 20-49 checkers: ¢16.00 each"}
+                          {quantity >= 10 && quantity < 20 && "Bulk discount applied! 10-19 checkers: ¢16.50 each"}
+                          {quantity < 10 && "Add more checkers for bulk discounts!"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -530,6 +549,13 @@ const BuyType = () => {
                       <div className="flex justify-between items-center">
                         <span className="text-gray-700">Quantity:</span>
                         <span className="font-semibold text-lg">{quantity || 0}</span>
+                      </div>
+                    )}
+                    {/* Show savings if applicable */}
+                    {quantity && quantity > 1 && unitPrice < 17.5 && (
+                      <div className="flex justify-between items-center text-green-600">
+                        <span>Bulk Discount Savings:</span>
+                        <span className="font-semibold">-¢{((17.5 - unitPrice) * quantity).toFixed(2)}</span>
                       </div>
                     )}
                     <hr className="border-gray-300" />
