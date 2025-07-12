@@ -1,19 +1,15 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Search, GraduationCap, MapPin, CheckCircle, Users, Award, Shield, MessageCircle, Building, Tag } from "lucide-react";
 import Header from "@/components/Header";
-
 const Index = () => {
   const handleUniversityFormsClick = () => {
     const message = encodeURIComponent("Hi, I'm interested in buying a university form.");
     const whatsappUrl = `https://wa.me/+233557538158?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
+  return <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-purple-50">
       <Header />
 
       {/* Hero Section */}
@@ -47,10 +43,7 @@ const Index = () => {
 
             {/* University Forms Button */}
             <div className="mb-12">
-              <Button
-                onClick={handleUniversityFormsClick}
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 rounded-full"
-              >
+              <Button onClick={handleUniversityFormsClick} className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 rounded-full">
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Buy University Forms
               </Button>
@@ -143,7 +136,7 @@ const Index = () => {
                   </ul>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-2">¢20.00 per check</p>
+                  
                   <Link to="/buy/CSSPS">
                     <Button className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                       Check Placement
@@ -232,10 +225,7 @@ const Index = () => {
                 </div>
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-4 font-medium">Chat with us on WhatsApp</p>
-                  <Button 
-                    onClick={handleUniversityFormsClick}
-                    className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                  >
+                  <Button onClick={handleUniversityFormsClick} className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Contact Us
                   </Button>
@@ -333,22 +323,20 @@ const Index = () => {
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-gray-800 mb-1">Support Hours</p>
-                <p className="text-sm text-gray-600">Monday - Friday<br/>8:00 AM - 6:00 PM</p>
+                <p className="text-sm text-gray-600">Monday - Friday<br />8:00 AM - 6:00 PM</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-gray-800 mb-1">Phone Support</p>
-                <p className="text-sm text-gray-600">+233 55 753 8158<br/>Toll-free calls</p>
+                <p className="text-sm text-gray-600">+233 55 753 8158<br />Toll-free calls</p>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm font-semibold text-gray-800 mb-1">Email Support</p>
-                <p className="text-sm text-gray-600">support@youngpress.com<br/>24/7 response</p>
+                <p className="text-sm text-gray-600">support@youngpress.com<br />24/7 response</p>
               </div>
             </div>
           </div>
         </div>
       </main>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
