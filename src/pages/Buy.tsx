@@ -78,6 +78,29 @@ const Buy = () => {
           </p>
         </div>
 
+        {/* Pricing Tiers Info - Moved under the description */}
+        <div className="mb-8 bg-white rounded-lg shadow-sm p-6 max-w-4xl mx-auto">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Tiered Pricing</h3>
+          <div className="grid md:grid-cols-4 gap-4 text-center">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-semibold text-blue-600">1-9 Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢17.50 each</p>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="font-semibold text-green-600">10-19 Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢16.50 each</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-semibold text-purple-600">20-49 Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢16.00 each</p>
+            </div>
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="font-semibold text-orange-600">50+ Checkers</p>
+              <p className="text-lg font-bold text-gray-900">¢15.00 each</p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {examTypes.map((exam) => {
             const IconComponent = exam.icon;
@@ -120,29 +143,6 @@ const Buy = () => {
               </Card>
             );
           })}
-        </div>
-
-        {/* Pricing Tiers Info - Moved to top */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6 max-w-4xl mx-auto">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Tiered Pricing</h3>
-          <div className="grid md:grid-cols-4 gap-4 text-center">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="font-semibold text-blue-600">1-9 Checkers</p>
-              <p className="text-lg font-bold text-gray-900">¢17.50 each</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="font-semibold text-green-600">10-19 Checkers</p>
-              <p className="text-lg font-bold text-gray-900">¢16.50 each</p>
-            </div>
-            <div className="bg-purple-50 p-4 rounded-lg">
-              <p className="font-semibold text-purple-600">20-49 Checkers</p>
-              <p className="text-lg font-bold text-gray-900">¢16.00 each</p>
-            </div>
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <p className="font-semibold text-orange-600">50+ Checkers</p>
-              <p className="text-lg font-bold text-gray-900">¢15.00 each</p>
-            </div>
-          </div>
         </div>
 
         {/* Additional Info */}
